@@ -18,6 +18,11 @@ paid theory, and material from private interviews are not published here.
 Each notebook has a fixed seed, an explicit deliverable, and local assertions.
 Run it in Colab or a Python 3.11+ environment. CPU is sufficient.
 
+Continuous verification regenerates every notebook, compiles all code cells,
+rejects committed outputs and executes the dependency/setup cells. Exercise and
+self-check cells stay unexecuted because starters intentionally contain no
+reference solutions.
+
 ## Regeneration
 
 The notebooks are generated from `scripts/generate_notebooks.py` so cell order

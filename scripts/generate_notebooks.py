@@ -12,11 +12,11 @@ def md(text: str) -> dict:
     return {"cell_type": "markdown", "metadata": {}, "source": text.splitlines(keepends=True)}
 
 
-def code(text: str) -> dict:
+def code(text: str, *, role: str = "exercise") -> dict:
     return {
         "cell_type": "code",
         "execution_count": None,
-        "metadata": {},
+        "metadata": {"ml_mentor": {"role": role}},
         "outputs": [],
         "source": text.splitlines(keepends=True),
     }
@@ -51,7 +51,7 @@ y_score = np.array([.05,.12,.88,.22,.63,.31,.08,.71,.44,.18,.56,.09,.27,.37,.92,
 FP_COST = 1
 FN_COST = 8
 THRESHOLDS = np.arange(0.1, 0.91, 0.05)
-"""),
+""", role="setup"),
         code("""def evaluate_threshold(y_true, y_score, threshold):
     # TODO: верните dict с threshold, tn, fp, fn, tp, precision, recall, cost.
     # Используйте zero_division=0 для precision/recall.
@@ -67,7 +67,7 @@ assert (results[["tn", "fp", "fn", "tp"]].sum(axis=1) == len(y_true)).all()
 best = results.sort_values(["cost", "threshold"]).iloc[0]
 assert 0 <= best.precision <= 1 and 0 <= best.recall <= 1
 print(best)
-"""),
+""", role="self_check"),
         md("""## Вывод
 
 Запишите выбранный threshold, цену FP/FN, ближайший альтернативный threshold и причину выбора. Отдельно объясните, почему этот threshold нельзя подбирать на test."""),
@@ -93,7 +93,7 @@ X, y = data.data, data.target
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.25, stratify=y, random_state=SEED
 )
-"""),
+""", role="setup"),
         code("""# TODO: соберите и обучите Pipeline.
 model = None
 
@@ -108,7 +108,7 @@ print({
     "roc_auc": roc_auc_score(y_test, y_score),
     "average_precision": average_precision_score(y_test, y_score),
 })
-"""),
+""", role="self_check"),
         code("""# TODO: выберите threshold на отдельной validation-части или через out-of-fold predictions.
 # Для лабораторной явно опишите упрощение, если повторно используете train для выбора порога.
 chosen_threshold = None
@@ -140,7 +140,7 @@ user_effect = rng.normal(size=n_users)[user_id]
 x = user_effect + 0.15 * timestamp + rng.normal(scale=.7, size=len(user_id))
 y = (user_effect + 0.08 * timestamp + rng.normal(size=len(user_id)) > 0).astype(int)
 df = pd.DataFrame({"user_id": user_id, "timestamp": timestamp, "x": x, "target": y})
-"""),
+""", role="setup"),
         code("""def fit_score(train_idx, test_idx):
     # TODO: обучите LogisticRegression на столбце x и верните ROC-AUC.
     raise NotImplementedError
@@ -158,7 +158,7 @@ report = pd.DataFrame(rows)
 assert report.roc_auc.between(0, 1).all()
 assert report.loc[report.split == "group", "user_overlap"].item() == 0
 report
-"""),
+""", role="self_check"),
         md("""## Вывод
 
 Опишите единицу независимого наблюдения, production-сценарий и возможный gap. Высокая метрика random split сама по себе не доказывает leakage; покажите конкретный канал пересечения."""),
@@ -184,7 +184,7 @@ models = {
     "random_forest": RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=-1),
     "hist_gradient_boosting": HistGradientBoostingClassifier(random_state=42),
 }
-"""),
+""", role="setup"),
         code("""# TODO: для каждой модели выполните один cross_validate с scoring='roc_auc'.
 # Затем fit на полном X только для оценки pickle size. Сохраните строки в results.
 results = []
@@ -195,7 +195,7 @@ assert required <= set(report.columns)
 assert set(report.model) == set(models)
 assert report.roc_auc_mean.between(0, 1).all()
 report.sort_values("roc_auc_mean", ascending=False)
-"""),
+""", role="self_check"),
         md("""## Вывод
 
 Объясните, где одно дерево остаётся уместным, почему Random Forest снижает variance и почему boosting нельзя объявлять победителем без latency/maintenance ограничений."""),
@@ -221,7 +221,7 @@ val_loader = DataLoader(TensorDataset(X[400:], y[400:]), batch_size=64, shuffle=
 model = nn.Sequential(nn.Linear(4, 16), nn.ReLU(), nn.Dropout(.2), nn.Linear(16, 2))
 optimizer = torch.optim.AdamW(model.parameters(), lr=1e-2)
 criterion = nn.CrossEntropyLoss()
-"""),
+""", role="setup"),
         code("""# BROKEN: сделайте code review, затем замените реализацию.
 def train_epoch(model, loader):
     losses = []
@@ -250,7 +250,7 @@ assert history[-1] < history[0], history
 assert score_1 == score_2, "validation должна быть детерминирована при неизменной модели"
 assert score_1 > 0.75, score_1
 print({"first_loss": history[0], "last_loss": history[-1], "val_accuracy": score_1})
-"""),
+""", role="self_check"),
         md("""## Review checklist
 
 Для каждой ошибки укажите механизм: почему `step()` до `backward()` не обновляет текущий градиент, зачем обнулять gradients, чем `train()` отличается от `eval()`, и почему validation выполняют без записи autograd graph."""),
@@ -277,7 +277,7 @@ X_raw, y = make_classification(
 X = pd.DataFrame(X_raw, columns=["signal", "feature_1", "feature_2", "feature_3", "feature_4"])
 X["signal_copy"] = X["signal"] + rng.normal(scale=.02, size=len(X))
 X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=.3, random_state=42)
-"""),
+""", role="setup"),
         code("""def fit_and_importance(columns):
     # TODO: fit RandomForestClassifier(random_state=42), посчитайте ROC-AUC
     # и permutation_importance(scoring='roc_auc', n_repeats=10, random_state=42).
@@ -293,7 +293,7 @@ assert 0 <= auc_with_copy <= 1 and 0 <= auc_without_copy <= 1
 print(X[["signal", "signal_copy"]].corr())
 display(with_copy.sort_values("importance_mean", ascending=False))
 display(without_copy.sort_values("importance_mean", ascending=False))
-"""),
+""", role="self_check"),
         md("""## Вывод
 
 Ответьте, что именно измеряет permutation importance, почему коррелированный дубль меняет результат и какие дополнительные проверки нужны перед удалением признака. SHAP можно сравнить дополнительно, но это не обязательная часть лабораторной."""),
