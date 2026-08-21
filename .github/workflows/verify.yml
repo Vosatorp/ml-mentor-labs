@@ -18,6 +18,7 @@ jobs:
           python-version: '3.11'
           cache: pip
       - run: pip install -r requirements.txt
+      - run: python scripts/sync_datasets.py --check
       - run: python scripts/generate_notebooks.py
       - run: git diff --exit-code
       - run: python scripts/validate_notebooks.py --execute-setup

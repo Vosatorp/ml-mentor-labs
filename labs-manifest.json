@@ -1,0 +1,147 @@
+{
+  "datasetManifest": {
+    "path": "data/datasets.json",
+    "sha256": "5431109e67b5766a26e0ce2a7aae28630326b58b28e9949a33057e000cb545a1"
+  },
+  "labs": [
+    {
+      "containsExecutionOutputs": false,
+      "containsSolutions": false,
+      "datasets": [],
+      "license": "MIT",
+      "notebookSha256": "fb219f371267fea2e8f33866aac18a8a132f23e439e6c9381f179cc40127b9a0",
+      "path": "01-metrics-threshold.ipynb",
+      "releaseStatus": "public",
+      "version": "1.0.0"
+    },
+    {
+      "containsExecutionOutputs": false,
+      "containsSolutions": false,
+      "datasets": [],
+      "license": "MIT",
+      "notebookSha256": "a9849cec51322e308d2cb7892cdfc7a0da1343224cc515ccbf161e0e8b009354",
+      "path": "02-honest-binary-baseline.ipynb",
+      "releaseStatus": "public",
+      "version": "1.0.0"
+    },
+    {
+      "containsExecutionOutputs": false,
+      "containsSolutions": false,
+      "datasets": [],
+      "license": "MIT",
+      "notebookSha256": "db794aa074251b4273cb448872b8499c468fa4b5e4cf3ec050b1ef450584eabc",
+      "path": "03-leakage-splits.ipynb",
+      "releaseStatus": "public",
+      "version": "1.0.0"
+    },
+    {
+      "containsExecutionOutputs": false,
+      "containsSolutions": false,
+      "datasets": [],
+      "license": "MIT",
+      "notebookSha256": "07f209f1b63a02b0c32187f5423a72ffcc11a70a5b3157a91a6942c6a242be7d",
+      "path": "04-tree-ensembles.ipynb",
+      "releaseStatus": "public",
+      "version": "1.0.0"
+    },
+    {
+      "containsExecutionOutputs": false,
+      "containsSolutions": false,
+      "datasets": [],
+      "license": "MIT",
+      "notebookSha256": "ccbdc1849dfe16471b07a2aa7caec99968c084c07860f72825ee6b6d93054709",
+      "path": "05-broken-pytorch-loop.ipynb",
+      "releaseStatus": "public",
+      "version": "1.0.0"
+    },
+    {
+      "containsExecutionOutputs": false,
+      "containsSolutions": false,
+      "datasets": [],
+      "license": "MIT",
+      "notebookSha256": "d58418e178e432a426c0e58056d8443028d4104ea19125e021665eade867a895",
+      "path": "06-correlated-importance.ipynb",
+      "releaseStatus": "public",
+      "version": "1.0.0"
+    },
+    {
+      "containsExecutionOutputs": false,
+      "containsSolutions": false,
+      "datasets": [
+        "uci-bike-sharing-hour"
+      ],
+      "license": "MIT",
+      "notebookSha256": "e643c56bdd7cbf60db4221537b86b4e8c131c4c86be0aab2b3e263756a63bc4c",
+      "path": "07-bike-demand-production-capstone.ipynb",
+      "releaseStatus": "review_ready",
+      "version": "0.9.0"
+    },
+    {
+      "containsExecutionOutputs": false,
+      "containsSolutions": false,
+      "datasets": [
+        "banking77"
+      ],
+      "license": "MIT",
+      "notebookSha256": "6ec27d39c1569678d6a7b777468a9834b18244fffbdd6d3b26b63a1739c96756",
+      "path": "08-banking77-tfidf-error-analysis.ipynb",
+      "releaseStatus": "review_ready",
+      "version": "0.9.0"
+    },
+    {
+      "containsExecutionOutputs": false,
+      "containsSolutions": false,
+      "datasets": [
+        "squad2-rag-subset"
+      ],
+      "license": "MIT",
+      "notebookSha256": "ac9426a347e2964c3952ae5641fcbc6a90a8fed543ff0905d1a13914bba65e34",
+      "path": "09-rag-failure-decomposition.ipynb",
+      "releaseStatus": "review_ready",
+      "version": "0.9.0"
+    },
+    {
+      "containsExecutionOutputs": false,
+      "containsSolutions": false,
+      "datasets": [],
+      "license": "MIT",
+      "notebookSha256": "1cd39ba9dccfbd9ec7a9e00a9b319d3493e857550962e72816f52f2bb36163b4",
+      "path": "10-llm-serving-benchmark.ipynb",
+      "releaseStatus": "draft",
+      "version": "0.1.0"
+    },
+    {
+      "containsExecutionOutputs": false,
+      "containsSolutions": false,
+      "datasets": [
+        "squad2-rag-subset"
+      ],
+      "license": "MIT",
+      "notebookSha256": "a9e016deede2d3cf2cfb226c5ae8f7888ffd8e05a32ba727fc1ec1d2d2abf452",
+      "path": "advanced/10a-vllm-benchmark.ipynb",
+      "releaseStatus": "draft",
+      "version": "0.1.0"
+    },
+    {
+      "containsExecutionOutputs": false,
+      "containsSolutions": false,
+      "datasets": [
+        "squad2-rag-subset"
+      ],
+      "license": "MIT",
+      "notebookSha256": "436315f804aec710b113db5361a25af46515b89477d0a4ed895679e388937b97",
+      "path": "advanced/10b-sglang-benchmark.ipynb",
+      "releaseStatus": "draft",
+      "version": "0.1.0"
+    }
+  ],
+  "publicIndex": [
+    "01-metrics-threshold.ipynb",
+    "02-honest-binary-baseline.ipynb",
+    "03-leakage-splits.ipynb",
+    "04-tree-ensembles.ipynb",
+    "05-broken-pytorch-loop.ipynb",
+    "06-correlated-importance.ipynb"
+  ],
+  "schemaVersion": 1
+}

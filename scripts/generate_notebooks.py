@@ -301,12 +301,169 @@ display(without_copy.sort_values("importance_mean", ascending=False))
 }
 
 
+from new_labs import build_new_labs
+
+
+NEW_LABS = build_new_labs(md=md, code=code, notebook=notebook)
+ALL_LABS = {**LABS, **NEW_LABS}
+
+RELEASE_METADATA = {
+    "01-metrics-threshold.ipynb": {"version": "1.0.0", "releaseStatus": "public", "datasets": []},
+    "02-honest-binary-baseline.ipynb": {"version": "1.0.0", "releaseStatus": "public", "datasets": []},
+    "03-leakage-splits.ipynb": {"version": "1.0.0", "releaseStatus": "public", "datasets": []},
+    "04-tree-ensembles.ipynb": {"version": "1.0.0", "releaseStatus": "public", "datasets": []},
+    "05-broken-pytorch-loop.ipynb": {"version": "1.0.0", "releaseStatus": "public", "datasets": []},
+    "06-correlated-importance.ipynb": {"version": "1.0.0", "releaseStatus": "public", "datasets": []},
+    "07-bike-demand-production-capstone.ipynb": {
+        "version": "0.9.0",
+        "releaseStatus": "review_ready",
+        "datasets": ["uci-bike-sharing-hour"],
+    },
+    "08-banking77-tfidf-error-analysis.ipynb": {
+        "version": "0.9.0",
+        "releaseStatus": "review_ready",
+        "datasets": ["banking77"],
+    },
+    "09-rag-failure-decomposition.ipynb": {
+        "version": "0.9.0",
+        "releaseStatus": "review_ready",
+        "datasets": ["squad2-rag-subset"],
+    },
+    "10-llm-serving-benchmark.ipynb": {"version": "0.1.0", "releaseStatus": "draft", "datasets": []},
+    "advanced/10a-vllm-benchmark.ipynb": {
+        "version": "0.1.0",
+        "releaseStatus": "draft",
+        "datasets": ["squad2-rag-subset"],
+    },
+    "advanced/10b-sglang-benchmark.ipynb": {
+        "version": "0.1.0",
+        "releaseStatus": "draft",
+        "datasets": ["squad2-rag-subset"],
+    },
+}
+
+
+def normalized_json(data: object, *, indent: int = 2) -> str:
+    return json.dumps(data, ensure_ascii=False, indent=indent, sort_keys=True) + "\n"
+
+
+def write_json(relative_path: str, data: object) -> str:
+    payload = normalized_json(data)
+    path = ROOT / relative_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(payload, encoding="utf-8")
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+
+def benchmark_protocol() -> dict:
+    return {
+        "schemaVersion": 1,
+        "protocolId": "squad2-first-32-serving-v1",
+        "status": "draft",
+        "promptSource": {
+            "datasetId": "squad2-rag-subset",
+            "selection": "first 32 answerable questions in document order; prompt contains context and question",
+            "license": "CC-BY-SA-4.0",
+        },
+        "workload": {
+            "requestCount": 32,
+            "maxOutputTokens": 64,
+            "temperature": 0,
+            "seed": 42,
+            "warmupRequests": 4,
+            "concurrencyLevels": [1, 4, 16],
+        },
+        "comparabilityRequirements": [
+            "same physical host and GPU model/count",
+            "same model artifact and immutable revision",
+            "same numerical precision and quantization",
+            "same prompts, request order, output-token cap and concurrency",
+            "same warmup policy and client-side measurement method",
+        ],
+        "requiredRunMetadata": [
+            "provenance",
+            "engine",
+            "engineVersion",
+            "engineCommit",
+            "modelId",
+            "modelRevision",
+            "gpu",
+            "driver",
+            "cuda",
+            "environmentLock",
+            "startedAt",
+            "rawFixturePath",
+            "rawFixtureSha256",
+        ],
+        "canonicalMetrics": [
+            "successfulRequests",
+            "inputTokens",
+            "outputTokens",
+            "requestThroughput",
+            "outputTokenThroughput",
+            "ttftP50Ms",
+            "ttftP95Ms",
+            "tpotP50Ms",
+            "tpotP95Ms",
+        ],
+    }
+
+
 def main() -> None:
-    for name, data in LABS.items():
+    notebook_hashes: dict[str, str] = {}
+    for name, data in ALL_LABS.items():
         payload = json.dumps(data, ensure_ascii=False, indent=1) + "\n"
         path = ROOT / name
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(payload, encoding="utf-8")
-        print(f"{name}  sha256:{hashlib.sha256(payload.encode()).hexdigest()}")
+        digest = hashlib.sha256(payload.encode()).hexdigest()
+        notebook_hashes[name] = digest
+        print(f"{name}  sha256:{digest}")
+
+    protocol = benchmark_protocol()
+    protocol_sha256 = write_json("data/llm-serving-benchmarks/protocol.json", protocol)
+    write_json(
+        "data/llm-serving-benchmarks/manifest.json",
+        {
+            "schemaVersion": 1,
+            "status": "draft",
+            "protocolPath": "data/llm-serving-benchmarks/protocol.json",
+            "protocolSha256": protocol_sha256,
+            "runs": [],
+        },
+    )
+
+    dataset_manifest_path = ROOT / "data" / "datasets.json"
+    if not dataset_manifest_path.exists():
+        raise FileNotFoundError("Run scripts/sync_datasets.py before generating notebook manifests")
+    dataset_manifest_sha256 = hashlib.sha256(dataset_manifest_path.read_bytes()).hexdigest()
+    entries = []
+    for path in ALL_LABS:
+        release = RELEASE_METADATA[path]
+        entries.append(
+            {
+                "path": path,
+                "version": release["version"],
+                "releaseStatus": release["releaseStatus"],
+                "license": "MIT",
+                "datasets": release["datasets"],
+                "notebookSha256": notebook_hashes[path],
+                "containsSolutions": False,
+                "containsExecutionOutputs": False,
+            }
+        )
+    write_json(
+        "labs-manifest.json",
+        {
+            "schemaVersion": 1,
+            "datasetManifest": {
+                "path": "data/datasets.json",
+                "sha256": dataset_manifest_sha256,
+            },
+            "publicIndex": [path for path in ALL_LABS if RELEASE_METADATA[path]["releaseStatus"] == "public"],
+            "labs": entries,
+        },
+    )
 
 
 if __name__ == "__main__":

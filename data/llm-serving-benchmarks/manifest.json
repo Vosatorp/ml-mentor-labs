@@ -1,0 +1,7 @@
+{
+  "protocolPath": "data/llm-serving-benchmarks/protocol.json",
+  "protocolSha256": "6c56e0201e14ab81e92c62ca70dfacf5c423e94915b699fb7a7c2f6dd25df61b",
+  "runs": [],
+  "schemaVersion": 1,
+  "status": "draft"
+}
