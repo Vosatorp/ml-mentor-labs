@@ -1,0 +1,113 @@
+{
+  "datasets": [
+    {
+      "artifacts": [
+        {
+          "bytes": 1156736,
+          "path": "data/uci-bike-sharing/hour.csv",
+          "sha256": "e03de4ee4ef4dc376ac6e04bf829673c6269e8eba5c60fa121640fa2f829504f"
+        },
+        {
+          "bytes": 5607,
+          "path": "data/uci-bike-sharing/source-readme.txt",
+          "sha256": "b92c8628622948bf0828c43a1b315d1517c3d7fd63654730d0dea379b8e88175"
+        },
+        {
+          "bytes": 317,
+          "path": "data/uci-bike-sharing/LICENSE",
+          "sha256": "35f50844366fe7cf7082c1d2276444b445f5cafb36edbf10468607b340394f17"
+        },
+        {
+          "bytes": 511,
+          "path": "data/uci-bike-sharing/ATTRIBUTION.md",
+          "sha256": "e7fb81218131df1703164710d91e7f1c7ef4a03c9e962bf03969159d98c1ecc9"
+        }
+      ],
+      "attribution": "Fanaee-T, Hadi; Gama, Joao. Bike Sharing. UCI Machine Learning Repository. DOI: 10.24432/C5W894.",
+      "id": "uci-bike-sharing-hour",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/legalcode",
+      "name": "Bike Sharing Dataset (hourly aggregation)",
+      "sourceSha256": "b70182d0d0508e9abbb79306ce5c0cec34869000f8220175ac83d11dbe845401",
+      "sourceUrl": "https://archive.ics.uci.edu/static/public/275/bike+sharing+dataset.zip"
+    },
+    {
+      "artifacts": [
+        {
+          "bytes": 839073,
+          "path": "data/banking77/train.csv",
+          "sha256": "b06e26ac675513959a63135f11b94ea7786ed02da65db93a5650d8838cbc664b"
+        },
+        {
+          "bytes": 239961,
+          "path": "data/banking77/test.csv",
+          "sha256": "d12d6e3bc4c3103966ae786dc435913c0c563dfa328f5a3646d0e62cfeeb474d"
+        },
+        {
+          "bytes": 2036,
+          "path": "data/banking77/categories.json",
+          "sha256": "53261da888122daf2d120d925458631d9619e15d82e56052e7a42e535ce32b63"
+        },
+        {
+          "bytes": 18650,
+          "path": "data/banking77/LICENSE",
+          "sha256": "7e7170e3cebf88a9f60c7b8421418323c09304da1af4d5e90f4da1dc1c8a2661"
+        }
+      ],
+      "attribution": "Casanueva et al. Efficient Intent Detection with Dual Sentence Encoders. PolyAI-LDN/task-specific-datasets.",
+      "id": "banking77",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/legalcode",
+      "name": "Banking77",
+      "sourceFiles": [
+        {
+          "sha256": "b06e26ac675513959a63135f11b94ea7786ed02da65db93a5650d8838cbc664b",
+          "url": "https://raw.githubusercontent.com/PolyAI-LDN/task-specific-datasets/57ec275d8078af65b7731c2a98be812d844a6d6b/banking_data/train.csv"
+        },
+        {
+          "sha256": "d12d6e3bc4c3103966ae786dc435913c0c563dfa328f5a3646d0e62cfeeb474d",
+          "url": "https://raw.githubusercontent.com/PolyAI-LDN/task-specific-datasets/57ec275d8078af65b7731c2a98be812d844a6d6b/banking_data/test.csv"
+        },
+        {
+          "sha256": "53261da888122daf2d120d925458631d9619e15d82e56052e7a42e535ce32b63",
+          "url": "https://raw.githubusercontent.com/PolyAI-LDN/task-specific-datasets/57ec275d8078af65b7731c2a98be812d844a6d6b/banking_data/categories.json"
+        },
+        {
+          "sha256": "7e7170e3cebf88a9f60c7b8421418323c09304da1af4d5e90f4da1dc1c8a2661",
+          "url": "https://raw.githubusercontent.com/PolyAI-LDN/task-specific-datasets/57ec275d8078af65b7731c2a98be812d844a6d6b/LICENSE"
+        }
+      ],
+      "sourceRevision": "57ec275d8078af65b7731c2a98be812d844a6d6b",
+      "sourceUrl": "https://github.com/PolyAI-LDN/task-specific-datasets/tree/57ec275d8078af65b7731c2a98be812d844a6d6b/banking_data"
+    },
+    {
+      "artifacts": [
+        {
+          "bytes": 125778,
+          "path": "data/squad2/squad2-rag-subset.json",
+          "sha256": "053396eeff7f1c07d473f2bd62c4d0a28f5d34d37f49d5ffd7922a58fbb5494f"
+        },
+        {
+          "bytes": 434,
+          "path": "data/squad2/LICENSE",
+          "sha256": "a80f108653600db4cd0671cba19cc40a61b80e5f8da1e43933419a6b6a0158f3"
+        },
+        {
+          "bytes": 810,
+          "path": "data/squad2/ATTRIBUTION.md",
+          "sha256": "0d75d84908368e04f6560a302dc52b288cbc49c34789dda567a0894f53f15b22"
+        }
+      ],
+      "attribution": "Rajpurkar, Jia et al. Stanford Question Answering Dataset 2.0.",
+      "id": "squad2-rag-subset",
+      "license": "CC-BY-SA-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/legalcode",
+      "modificationNotice": "Deterministic adapted subset; selection and normalization details are stored in data/squad2/ATTRIBUTION.md and inside the fixture.",
+      "name": "SQuAD 2.0 fixed RAG subset",
+      "selection": "100 contexts in source order; one answerable QA each; one impossible QA for first 50 eligible contexts",
+      "sourceSha256": "80a5225e94905956a6446d296ca1093975c4d3b3260f1d6c8f68bc2ab77182d8",
+      "sourceUrl": "https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v2.0.json"
+    }
+  ],
+  "schemaVersion": 1
+}

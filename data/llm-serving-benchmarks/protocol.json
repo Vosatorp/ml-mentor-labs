@@ -1,0 +1,55 @@
+{
+  "canonicalMetrics": [
+    "successfulRequests",
+    "inputTokens",
+    "outputTokens",
+    "requestThroughput",
+    "outputTokenThroughput",
+    "ttftP50Ms",
+    "ttftP95Ms",
+    "tpotP50Ms",
+    "tpotP95Ms"
+  ],
+  "comparabilityRequirements": [
+    "same physical host and GPU model/count",
+    "same model artifact and immutable revision",
+    "same numerical precision and quantization",
+    "same prompts, request order, output-token cap and concurrency",
+    "same warmup policy and client-side measurement method"
+  ],
+  "promptSource": {
+    "datasetId": "squad2-rag-subset",
+    "license": "CC-BY-SA-4.0",
+    "selection": "first 32 answerable questions in document order; prompt contains context and question"
+  },
+  "protocolId": "squad2-first-32-serving-v1",
+  "requiredRunMetadata": [
+    "provenance",
+    "engine",
+    "engineVersion",
+    "engineCommit",
+    "modelId",
+    "modelRevision",
+    "gpu",
+    "driver",
+    "cuda",
+    "environmentLock",
+    "startedAt",
+    "rawFixturePath",
+    "rawFixtureSha256"
+  ],
+  "schemaVersion": 1,
+  "status": "draft",
+  "workload": {
+    "concurrencyLevels": [
+      1,
+      4,
+      16
+    ],
+    "maxOutputTokens": 64,
+    "requestCount": 32,
+    "seed": 42,
+    "temperature": 0,
+    "warmupRequests": 4
+  }
+}
