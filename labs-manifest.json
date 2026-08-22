@@ -71,7 +71,7 @@
         "uci-bike-sharing-hour"
       ],
       "license": "MIT",
-      "notebookSha256": "e643c56bdd7cbf60db4221537b86b4e8c131c4c86be0aab2b3e263756a63bc4c",
+      "notebookSha256": "41a7a9327fffda22914fb99e94bcf5971cce2d4867326464c5eef3615cc8e3e6",
       "path": "07-bike-demand-production-capstone.ipynb",
       "releaseStatus": "review_ready",
       "version": "0.9.0"
@@ -83,7 +83,7 @@
         "banking77"
       ],
       "license": "MIT",
-      "notebookSha256": "6ec27d39c1569678d6a7b777468a9834b18244fffbdd6d3b26b63a1739c96756",
+      "notebookSha256": "96ae50f149ed0a89302d55890ce7b058c6c7895b8f8821c819ab3222137866c1",
       "path": "08-banking77-tfidf-error-analysis.ipynb",
       "releaseStatus": "review_ready",
       "version": "0.9.0"
@@ -95,7 +95,7 @@
         "squad2-rag-subset"
       ],
       "license": "MIT",
-      "notebookSha256": "ac9426a347e2964c3952ae5641fcbc6a90a8fed543ff0905d1a13914bba65e34",
+      "notebookSha256": "f43de002d49651bf15e8bbf46e946549a73ce8ba11687cca18ffe8a05de1e694",
       "path": "09-rag-failure-decomposition.ipynb",
       "releaseStatus": "review_ready",
       "version": "0.9.0"
@@ -117,7 +117,7 @@
         "squad2-rag-subset"
       ],
       "license": "MIT",
-      "notebookSha256": "a9e016deede2d3cf2cfb226c5ae8f7888ffd8e05a32ba727fc1ec1d2d2abf452",
+      "notebookSha256": "4dd971987b328bbdb6629250d9a907d2b62fccff4dec89a2ec36c805e488afb0",
       "path": "advanced/10a-vllm-benchmark.ipynb",
       "releaseStatus": "draft",
       "version": "0.1.0"
@@ -129,7 +129,7 @@
         "squad2-rag-subset"
       ],
       "license": "MIT",
-      "notebookSha256": "436315f804aec710b113db5361a25af46515b89477d0a4ed895679e388937b97",
+      "notebookSha256": "f0a380caaed108782f523f68a4ba96ad931a0a71561671c6f5c5f618235fe6d3",
       "path": "advanced/10b-sglang-benchmark.ipynb",
       "releaseStatus": "draft",
       "version": "0.1.0"

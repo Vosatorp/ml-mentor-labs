@@ -55,25 +55,38 @@ def sha256(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def require_sha256(payload: bytes, expected: str, label: str) -> None:
+    actual = sha256(payload)
+    if actual != expected:
+        raise RuntimeError(f"{label}: checksum changed: {actual}")
+
+
+def require_final_hostname(response, expected: str) -> None:
+    actual = urlparse(response.geturl()).hostname
+    if actual != expected:
+        raise RuntimeError(f"unexpected redirect host: {actual}")
+
+
 def resolve_bike_path() -> Path:
     candidates = [Path.cwd(), *Path.cwd().parents]
     for candidate in candidates:
         path = candidate / "data" / "uci-bike-sharing" / "hour.csv"
         if path.is_file():
-            assert sha256(path.read_bytes()) == HOUR_CSV_SHA256
+            require_sha256(path.read_bytes(), HOUR_CSV_SHA256, "Bike Sharing hour.csv")
             return path
 
     cache_path = Path("/tmp/ml-mentor-labs-datasets-v1/uci-bike-sharing/hour.csv")
-    if cache_path.is_file() and sha256(cache_path.read_bytes()) == HOUR_CSV_SHA256:
+    if cache_path.is_file():
+        require_sha256(cache_path.read_bytes(), HOUR_CSV_SHA256, "cached Bike Sharing hour.csv")
         return cache_path
     request = urllib.request.Request(UCI_SOURCE_URL, headers={"User-Agent": "ML-Mentor-Labs/1.0"})
     with urllib.request.urlopen(request, timeout=120) as response:
-        assert urlparse(response.geturl()).hostname == "archive.ics.uci.edu"
+        require_final_hostname(response, "archive.ics.uci.edu")
         archive_payload = response.read()
-    assert sha256(archive_payload) == UCI_SOURCE_SHA256, "UCI source checksum changed"
+    require_sha256(archive_payload, UCI_SOURCE_SHA256, "UCI Bike Sharing ZIP")
     with zipfile.ZipFile(io.BytesIO(archive_payload)) as archive:
         hour_payload = archive.read("hour.csv")
-    assert sha256(hour_payload) == HOUR_CSV_SHA256
+    require_sha256(hour_payload, HOUR_CSV_SHA256, "Bike Sharing hour.csv from ZIP")
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     cache_path.write_bytes(hour_payload)
     return cache_path
@@ -99,10 +112,14 @@ assert df[TARGET].ge(0).all()
                 md(
                     """## 1. Хронологическая проверка
 
-Отделите последние 15% наблюдений в тестовую выборку, предшествующие 15% — в проверочную, остальное — в обучающую. Границы должны зависеть только от позиции во временном ряду. Тестовую выборку не используйте при выборе признаков, модели и гиперпараметров."""
+Отделите последние 15% наблюдений в тестовую выборку, предшествующие 15% — в проверочную, остальное — в обучающую. Используйте закреплённые границы ниже: первые `TRAIN_END` строк, затем строки до `VALIDATION_END`, затем остаток. Так два решения будут сравниваться на одних и тех же 70/15/15 отрезках. Тестовую выборку не используйте при выборе признаков, модели и гиперпараметров."""
                 ),
                 code(
-                    """def chronological_split(frame: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+                    """TRAIN_END = int(len(df) * 0.70)
+VALIDATION_END = int(len(df) * 0.85)
+
+
+def chronological_split(frame: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     # TODO: верните непересекающиеся train, validation и test в хронологическом порядке.
     raise NotImplementedError
 
@@ -121,18 +138,25 @@ train_df, validation_df, test_df = chronological_split(df)
 
 У обучаемых моделей одинаковый бюджет: одно обучение без поиска по широкой сетке. `HistGradientBoostingRegressor` не принимает разреженную матрицу, поэтому его `OneHotEncoder` должен использовать `sparse_output=False` (либо нужна другая корректная плотная предобработка). Любые преобразования обучаются только на обучающей выборке.
 
-Для сезонного прогноза разрешено использовать целевую переменную из проверочной или тестовой выборки только тогда, когда соответствующий час уже наступил: для прогноза в момент `t` источник обязан быть ровно `t − 168h` и строго раньше `t`. Это имитирует почасовую последовательную проверку (rolling backtest). Если брать историю только из обучающей выборки, для поздних недель базовый прогноз ошибочно исчезнет.
+Для сезонного прогноза разрешено использовать целевую переменную из проверочной или тестовой выборки только тогда, когда соответствующий час уже наступил: для прогноза в момент `t` источник обязан быть ровно `t − 168h` и строго раньше `t`. Это имитирует почасовую последовательную проверку (rolling backtest). Если брать историю только из обучающей выборки, для поздних недель базовый прогноз ошибочно исчезнет. В данных есть пропущенные часы. Если точного источника нет, используйте закреплённую политику `no_prediction`: оставьте `NaN`, измерьте покрытие и не подменяйте источник соседним или будущим наблюдением.
 
-Считайте MAE в исходных единицах спроса и RMSLE после обрезки отрицательных прогнозов до нуля. RMSLE сильнее наказывает относительную ошибку в часы с небольшим спросом."""
+Считайте MAE в исходных единицах спроса и RMSLE после обрезки отрицательных прогнозов до нуля. Метрики сезонного решения считайте только там, где прогноз доступен, и всегда показывайте рядом покрытие. RMSLE сильнее наказывает относительную ошибку в часы с небольшим спросом."""
                 ),
                 code(
                     """MODEL_NAMES = ("ridge", "hist_gradient_boosting")
+SEASONAL_MISSING_POLICY = "no_prediction"
 
 
-def seasonal_naive(observations: pd.DataFrame, prediction_rows: pd.DataFrame) -> tuple[np.ndarray, pd.DataFrame]:
+def seasonal_naive(
+    observations: pd.DataFrame,
+    prediction_rows: pd.DataFrame,
+    *,
+    missing_policy: str = SEASONAL_MISSING_POLICY,
+) -> tuple[np.ndarray, pd.DataFrame]:
     # TODO: сопоставьте каждому prediction_timestamp источник ровно t - 168h.
-    # Верните predictions и audit columns=[prediction_timestamp, source_timestamp, source_value].
+    # Верните predictions и audit columns=[prediction_timestamp, source_timestamp, source_value, available].
     # observations может содержать весь backtest, но lookup имеет право читать только source_timestamp < prediction_timestamp.
+    # Поддержите только явную политику no_prediction: отсутствующий источник остаётся NaN.
     raise NotImplementedError
 
 
@@ -143,34 +167,47 @@ def build_model(name: str) -> Pipeline:
 
 
 def regression_report(y_true: pd.Series, y_pred: np.ndarray) -> dict[str, float]:
-    # TODO: верните mae и rmsle; для RMSLE обрежьте прогноз снизу нулём.
+    # TODO: верните mae, rmsle, coverage и n_predictions. NaN-прогнозы исключите из метрик,
+    # но обязательно учтите в coverage; для RMSLE обрежьте доступный прогноз снизу нулём.
     raise NotImplementedError
 
 
 models = {name: build_model(name) for name in MODEL_NAMES}
-# TODO: получите predictions всех трёх baseline на validation и одну строку метрик на модель.
+# TODO: получите predictions всех трёх решений на validation и одну строку метрик на модель.
 validation_predictions = {}
-validation_results = pd.DataFrame(columns=["model", "mae", "rmsle", "fit_seconds"])
+validation_results = pd.DataFrame(
+    columns=["model", "mae", "rmsle", "coverage", "n_predictions", "fit_seconds"]
+)
 seasonal_validation_audit = None
-# TODO: выберите learned-модель по validation; naive остаётся обязательной точкой сравнения.
-SELECTED_MODEL_NAME = None
-PRODUCTION_DECISION = None
+# TODO: выберите лучшую обучаемую модель только по validation MAE. Затем сравните её
+# с seasonal baseline и зафиксируйте решение до открытия test.
+CANDIDATE_MODEL_NAME = None
+VALIDATION_GO_NO_GO = {
+    "candidate": None,
+    "baseline": "seasonal_naive",
+    "rule": "promote_candidate_only_if_validation_mae_is_lower",
+    "outcome": None,  # promote_candidate | keep_seasonal_baseline
+}
 """
                 ),
                 md(
                     """## 3. Финальная проверка
 
-После фиксации решения переобучите выбранный конвейер на обучающей и проверочной выборках и ровно один раз посчитайте метрики на тестовой. Не подбирайте параметры по тестовому результату. Для выбранной модели посчитайте срезы MAE на проверочной и тестовой выборках по часу суток, признаку рабочего дня и погодной категории. Небольшой выигрыш общей метрики может скрывать систематический провал на важном сегменте.
+После фиксации решения переобучите кандидата среди обучаемых моделей на обучающей и проверочной выборках и ровно один раз посчитайте его метрики на тестовой. Отдельно посчитайте метрики и покрытие сезонного решения на тесте. Не меняйте `VALIDATION_GO_NO_GO` по тестовому результату. Для кандидата посчитайте срезы MAE на проверочной и тестовой выборках по часу суток, признаку рабочего дня и погодной категории. Небольшой выигрыш общей метрики может скрывать систематический провал на важном сегменте.
 
-Сохраните обученный конвейер через `joblib` и явно опишите входную схему артефакта."""
+Сохраните кандидата через `joblib` и явно назовите его кандидатом: сериализация не означает автоматический выпуск. Опишите входную схему артефакта. Исторические столбцы погоды здесь содержат уже реализованные наблюдения; в реальном прогнозе следующего часа потребуются прогнозные признаки погоды. Зафиксируйте это как оптимистичное ограничение офлайн-оценки."""
                 ),
                 code(
-                    """# TODO: после фиксации решения получите final_model, test_predictions и test_metrics.
-final_model = None
-test_predictions = None
-test_metrics = None
-ARTIFACT_PATH = Path("/tmp/ml-mentor-bike-demand.joblib")
-# TODO: сериализуйте final_model в ARTIFACT_PATH.
+                    """# TODO: после фиксации решения получите кандидата и оба test-отчёта.
+candidate_model = None
+candidate_test_predictions = None
+candidate_test_metrics = None
+seasonal_test_predictions = None
+seasonal_test_audit = None
+seasonal_test_metrics = None
+FINAL_REPORT = None
+ARTIFACT_PATH = Path("/tmp/ml-mentor-bike-demand-candidate.joblib")
+# TODO: сериализуйте candidate_model в ARTIFACT_PATH. Это кандидат, а не подтверждение выпуска.
 INPUT_SCHEMA = [
     # TODO: по одному dict(name, dtype, nullable) на каждый признак из FEATURES.
 ]
@@ -182,8 +219,8 @@ def mae_slices(frame: pd.DataFrame, y_true: pd.Series, y_pred: np.ndarray, *, sp
     raise NotImplementedError
 
 
-validation_slices = None
-test_slices = None
+validation_slices = None  # кандидат на validation
+test_slices = None  # кандидат на test
 """
                 ),
                 md(
@@ -198,6 +235,7 @@ MODEL_CARD = {
     "target_horizon": None,
     "validation_scheme": None,
     "primary_metric": None,
+    "deployment_status": None,
     "known_limitations": None,
 }
 INFERENCE_CONTRACT = {
@@ -214,13 +252,23 @@ DRIFT_CHECKS = [
                     """# Self-check: запускайте после выполнения всех TODO.
 assert len(train_df) + len(validation_df) + len(test_df) == len(df)
 assert train_df.index.is_unique and validation_df.index.is_unique and test_df.index.is_unique
+assert len(train_df) == TRAIN_END
+assert len(validation_df) == VALIDATION_END - TRAIN_END
+assert len(test_df) == len(df) - VALIDATION_END
+assert train_df["timestamp"].reset_index(drop=True).equals(df.iloc[:TRAIN_END]["timestamp"].reset_index(drop=True))
+assert validation_df["timestamp"].reset_index(drop=True).equals(
+    df.iloc[TRAIN_END:VALIDATION_END]["timestamp"].reset_index(drop=True)
+)
+assert test_df["timestamp"].reset_index(drop=True).equals(df.iloc[VALIDATION_END:]["timestamp"].reset_index(drop=True))
 assert train_df["timestamp"].max() < validation_df["timestamp"].min() < test_df["timestamp"].min()
 assert not (set(FEATURES) & LEAKAGE_COLUMNS)
 assert set(models) == set(MODEL_NAMES)
 assert set(validation_predictions) == {"seasonal_naive", *MODEL_NAMES}
 assert all(len(prediction) == len(validation_df) for prediction in validation_predictions.values())
 assert seasonal_validation_audit is not None
-assert set(seasonal_validation_audit.columns) == {"prediction_timestamp", "source_timestamp", "source_value"}
+assert set(seasonal_validation_audit.columns) == {
+    "prediction_timestamp", "source_timestamp", "source_value", "available",
+}
 assert len(seasonal_validation_audit) == len(validation_df)
 assert seasonal_validation_audit["prediction_timestamp"].reset_index(drop=True).equals(
     validation_df["timestamp"].reset_index(drop=True)
@@ -229,22 +277,78 @@ assert (seasonal_validation_audit["source_timestamp"] < seasonal_validation_audi
 assert (
     seasonal_validation_audit["prediction_timestamp"] - seasonal_validation_audit["source_timestamp"]
 ).eq(pd.Timedelta(hours=168)).all()
-assert seasonal_validation_audit["source_value"].notna().all()
-assert np.allclose(validation_predictions["seasonal_naive"], seasonal_validation_audit["source_value"])
+assert seasonal_validation_audit["available"].equals(seasonal_validation_audit["source_value"].notna())
+assert seasonal_validation_audit["available"].all()
+expected_validation_source = df.set_index("timestamp")[TARGET].reindex(
+    seasonal_validation_audit["source_timestamp"]
+).to_numpy(dtype=float)
+assert np.allclose(seasonal_validation_audit["source_value"], expected_validation_source, equal_nan=True)
+assert np.allclose(
+    validation_predictions["seasonal_naive"], seasonal_validation_audit["source_value"], equal_nan=True
+)
 assert all({"preprocess", "model"} <= set(model.named_steps) for model in models.values())
 ridge_matrix = models["ridge"].named_steps["preprocess"].transform(validation_df[FEATURES].head(4))
 hist_matrix = models["hist_gradient_boosting"].named_steps["preprocess"].transform(validation_df[FEATURES].head(4))
 assert sparse.issparse(ridge_matrix) or isinstance(ridge_matrix, np.ndarray)
 assert isinstance(hist_matrix, np.ndarray) and not sparse.issparse(hist_matrix)
 assert set(validation_results["model"]) == {"seasonal_naive", *MODEL_NAMES}
-assert {"model", "mae", "rmsle", "fit_seconds"} <= set(validation_results.columns)
-assert validation_results[["mae", "rmsle", "fit_seconds"]].ge(0).all().all()
-assert SELECTED_MODEL_NAME in MODEL_NAMES
-assert isinstance(PRODUCTION_DECISION, str) and PRODUCTION_DECISION.strip()
-assert final_model is not None and test_predictions is not None
-assert len(test_predictions) == len(test_df)
-assert set(test_metrics) == {"mae", "rmsle"}
-assert all(np.isfinite(list(test_metrics.values())))
+metric_columns = {"mae", "rmsle", "coverage", "n_predictions"}
+assert {"model", *metric_columns, "fit_seconds"} <= set(validation_results.columns)
+assert validation_results[[*metric_columns, "fit_seconds"]].ge(0).all().all()
+assert validation_results["coverage"].between(0, 1).all()
+seasonal_validation_row = validation_results.set_index("model").loc["seasonal_naive"]
+assert np.isclose(seasonal_validation_row["coverage"], seasonal_validation_audit["available"].mean())
+assert int(seasonal_validation_row["n_predictions"]) == int(seasonal_validation_audit["available"].sum())
+assert CANDIDATE_MODEL_NAME in MODEL_NAMES
+expected_candidate = validation_results.query("model in @MODEL_NAMES").sort_values(["mae", "model"]).iloc[0]["model"]
+assert CANDIDATE_MODEL_NAME == expected_candidate
+assert set(VALIDATION_GO_NO_GO) == {"candidate", "baseline", "rule", "outcome"}
+assert VALIDATION_GO_NO_GO["candidate"] == CANDIDATE_MODEL_NAME
+assert VALIDATION_GO_NO_GO["baseline"] == "seasonal_naive"
+assert VALIDATION_GO_NO_GO["rule"] == "promote_candidate_only_if_validation_mae_is_lower"
+candidate_validation_mae = validation_results.set_index("model").loc[CANDIDATE_MODEL_NAME, "mae"]
+expected_outcome = (
+    "promote_candidate" if candidate_validation_mae < seasonal_validation_row["mae"]
+    else "keep_seasonal_baseline"
+)
+assert VALIDATION_GO_NO_GO["outcome"] == expected_outcome
+assert candidate_model is not None and candidate_test_predictions is not None
+assert len(candidate_test_predictions) == len(test_df)
+assert set(candidate_test_metrics) == metric_columns
+assert all(np.isfinite(list(candidate_test_metrics.values())))
+assert np.isclose(candidate_test_metrics["coverage"], 1.0)
+assert int(candidate_test_metrics["n_predictions"]) == len(test_df)
+assert seasonal_test_predictions is not None and len(seasonal_test_predictions) == len(test_df)
+assert seasonal_test_audit is not None and set(seasonal_test_audit.columns) == {
+    "prediction_timestamp", "source_timestamp", "source_value", "available",
+}
+assert len(seasonal_test_audit) == len(test_df)
+assert seasonal_test_audit["prediction_timestamp"].reset_index(drop=True).equals(
+    test_df["timestamp"].reset_index(drop=True)
+)
+assert (seasonal_test_audit["source_timestamp"] < seasonal_test_audit["prediction_timestamp"]).all()
+assert (
+    seasonal_test_audit["prediction_timestamp"] - seasonal_test_audit["source_timestamp"]
+).eq(pd.Timedelta(hours=168)).all()
+assert seasonal_test_audit["available"].equals(seasonal_test_audit["source_value"].notna())
+assert int((~seasonal_test_audit["available"]).sum()) == 39
+expected_test_source = df.set_index("timestamp")[TARGET].reindex(
+    seasonal_test_audit["source_timestamp"]
+).to_numpy(dtype=float)
+assert np.allclose(seasonal_test_audit["source_value"], expected_test_source, equal_nan=True)
+assert np.allclose(seasonal_test_predictions, seasonal_test_audit["source_value"], equal_nan=True)
+assert set(seasonal_test_metrics) == metric_columns
+assert np.isclose(seasonal_test_metrics["coverage"], seasonal_test_audit["available"].mean())
+assert int(seasonal_test_metrics["n_predictions"]) == int(seasonal_test_audit["available"].sum())
+assert FINAL_REPORT is not None and {
+    "validation_go_no_go", "candidate_test", "seasonal_test",
+    "seasonal_missing_policy", "seasonal_test_missing",
+} <= set(FINAL_REPORT)
+assert FINAL_REPORT["validation_go_no_go"] == VALIDATION_GO_NO_GO
+assert FINAL_REPORT["candidate_test"] == candidate_test_metrics
+assert FINAL_REPORT["seasonal_test"] == seasonal_test_metrics
+assert FINAL_REPORT["seasonal_missing_policy"] == SEASONAL_MISSING_POLICY
+assert FINAL_REPORT["seasonal_test_missing"] == 39
 assert ARTIFACT_PATH.is_file()
 restored_model = joblib.load(ARTIFACT_PATH)
 assert len(restored_model.predict(test_df[FEATURES].head(2))) == 2
@@ -263,9 +367,11 @@ assert test_slices[["n", "mae"]].ge(0).all().all()
 assert validation_slices.groupby("dimension")["n"].sum().eq(len(validation_df)).all()
 assert test_slices.groupby("dimension")["n"].sum().eq(len(test_df)).all()
 assert all(MODEL_CARD.values()) and all(INFERENCE_CONTRACT.values())
+limitations = str(MODEL_CARD["known_limitations"]).lower()
+assert "погод" in limitations and "прогноз" in limitations and "оптимист" in limitations
 assert len(DRIFT_CHECKS) >= 3
 assert all({"signal", "window", "threshold", "action"} <= set(item) for item in DRIFT_CHECKS)
-print({"validation": validation_results, "test": test_metrics})
+print({"validation": validation_results, "final_report": FINAL_REPORT})
 """,
                     role="self_check",
                 ),
@@ -321,25 +427,42 @@ def sha256(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def require_sha256(payload: bytes, expected: str, label: str) -> None:
+    actual = sha256(payload)
+    if actual != expected:
+        raise RuntimeError(f"{label}: checksum changed: {actual}")
+
+
+def require_final_hostname(response, expected: str) -> None:
+    actual = urlparse(response.geturl()).hostname
+    if actual != expected:
+        raise RuntimeError(f"unexpected redirect host: {actual}")
+
+
 def resolve_banking_dir() -> Path:
     candidates = [Path.cwd(), *Path.cwd().parents]
     for candidate in candidates:
         directory = candidate / "data" / "banking77"
         if all((directory / name).is_file() for name in BANKING_FILES):
-            assert all(sha256((directory / name).read_bytes()) == spec[1] for name, spec in BANKING_FILES.items())
+            for name, spec in BANKING_FILES.items():
+                require_sha256((directory / name).read_bytes(), spec[1], f"Banking77 {name}")
             return directory
 
     directory = Path("/tmp/ml-mentor-labs-datasets-v1/banking77")
     directory.mkdir(parents=True, exist_ok=True)
     for name, (url, expected_sha256) in BANKING_FILES.items():
         path = directory / name
-        if path.is_file() and sha256(path.read_bytes()) == expected_sha256:
-            continue
+        if path.is_file():
+            try:
+                require_sha256(path.read_bytes(), expected_sha256, f"cached Banking77 {name}")
+                continue
+            except RuntimeError:
+                path.unlink()
         request = urllib.request.Request(url, headers={"User-Agent": "ML-Mentor-Labs/1.0"})
         with urllib.request.urlopen(request, timeout=120) as response:
-            assert urlparse(response.geturl()).hostname == "raw.githubusercontent.com"
+            require_final_hostname(response, "raw.githubusercontent.com")
             payload = response.read()
-        assert sha256(payload) == expected_sha256, f"Banking77 checksum changed: {name}"
+        require_sha256(payload, expected_sha256, f"Banking77 {name}")
         path.write_bytes(payload)
     return directory
 
@@ -513,6 +636,18 @@ def sha256(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def require_sha256(payload: bytes, expected: str, label: str) -> None:
+    actual = sha256(payload)
+    if actual != expected:
+        raise RuntimeError(f"{label}: checksum changed: {actual}")
+
+
+def require_final_hostname(response, expected: str) -> None:
+    actual = urlparse(response.geturl()).hostname
+    if actual != expected:
+        raise RuntimeError(f"unexpected redirect host: {actual}")
+
+
 def normalized_json(data: object) -> bytes:
     return (json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\\n").encode("utf-8")
 
@@ -560,7 +695,8 @@ def build_squad_subset(source: bytes) -> bytes:
                 break
         if len(documents_payload) == 100:
             break
-    assert len(documents_payload) == 100 and impossible_examples == 50
+    if len(documents_payload) != 100 or impossible_examples != 50:
+        raise RuntimeError("SQuAD subset source no longer satisfies the pinned selection recipe")
     return normalized_json(
         {
             "attribution": "Rajpurkar, Jia et al. Stanford Question Answering Dataset 2.0.",
@@ -588,18 +724,23 @@ def resolve_squad_subset() -> Path:
     candidates = [Path.cwd(), *Path.cwd().parents]
     for candidate in candidates:
         path = candidate / "data" / "squad2" / "squad2-rag-subset.json"
-        if path.is_file() and sha256(path.read_bytes()) == SQUAD_SUBSET_SHA256:
+        if path.is_file():
+            require_sha256(path.read_bytes(), SQUAD_SUBSET_SHA256, "local SQuAD subset")
             return path
     cache_path = Path("/tmp/ml-mentor-labs-datasets-v1/squad2/squad2-rag-subset.json")
-    if cache_path.is_file() and sha256(cache_path.read_bytes()) == SQUAD_SUBSET_SHA256:
-        return cache_path
+    if cache_path.is_file():
+        try:
+            require_sha256(cache_path.read_bytes(), SQUAD_SUBSET_SHA256, "cached SQuAD subset")
+            return cache_path
+        except RuntimeError:
+            cache_path.unlink()
     request = urllib.request.Request(SQUAD_SOURCE_URL, headers={"User-Agent": "ML-Mentor-Labs/1.0"})
     with urllib.request.urlopen(request, timeout=120) as response:
-        assert urlparse(response.geturl()).hostname == "rajpurkar.github.io"
+        require_final_hostname(response, "rajpurkar.github.io")
         source = response.read()
-    assert sha256(source) == SQUAD_SOURCE_SHA256, "SQuAD source checksum changed"
+    require_sha256(source, SQUAD_SOURCE_SHA256, "SQuAD 2.0 source")
     subset = build_squad_subset(source)
-    assert sha256(subset) == SQUAD_SUBSET_SHA256, "SQuAD subset recipe changed"
+    require_sha256(subset, SQUAD_SUBSET_SHA256, "generated SQuAD subset")
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     cache_path.write_bytes(subset)
     return cache_path
@@ -680,7 +821,11 @@ vectorizer, document_matrix = build_retriever(documents)
                 md(
                     """## 2. Простой ответ и отказ
 
-Используйте готовую прозрачную функцию лексического ответа: она получает вопрос и первый найденный контекст, выбирает короткий фрагмент текста и возвращает оценку уверенности (`confidence`). Улучшать эту функцию не нужно — центральная работа лабораторной посвящена поиску и классификации ошибок. Для вопроса без ответа система должна уметь вернуть пустую строку. Порог отказа подбирается по сетке от 0 до 1 только на проверочной выборке, затем замораживается. Критерий выбора — среднее между долей успешных ответов на вопросах с ответом и долей корректных отказов на вопросах без ответа; при равенстве выбирается меньший порог. Порог успешного ответа `ANSWER_SUCCESS_F1 = 0.5` задаётся заранее и по тестовой выборке не меняется.
+Используйте готовую прозрачную функцию лексического ответа: она получает вопрос и первый найденный контекст, выбирает подходящее предложение, а затем короткий числовой, именной или связочный фрагмент. Это ограниченный англоязычный baseline с понятными правилами, а не скрытая QA-модель. Улучшать его не нужно — центральная работа лабораторной посвящена поиску, метрикам и классификации ошибок.
+
+Функция возвращает фрагмент и оценку уверенности (`confidence`). Если уверенность ниже выбранного порога, итоговый ответ должен быть пустой строкой. Порог подбирается по сетке от 0 до 1 только на проверочной выборке, затем замораживается. Критерий выбора — среднее между долей успешных ответов на вопросах с ответом и долей корректных отказов на вопросах без ответа. Чтобы критерий не выбрал бесполезную систему «всегда отказываться», заранее зафиксировано ограничение: ответ должен быть выдан минимум для 60% проверочных вопросов с ответом. Не проходящие его пороги не участвуют в выборе. При равенстве выбирается меньший порог.
+
+Порог успешного ответа `ANSWER_SUCCESS_F1 = 0.5` и минимальное покрытие `MIN_ANSWER_COVERAGE = 0.60` заданы до тестовой выборки и по её результатам не меняются. 60% — учебный продуктовый контракт именно этой лабораторной, а не универсальная рекомендация. В реальной системе минимальное покрытие заранее задаёт владелец продукта с учётом цены ошибки и допустимой доли отказов.
 
 Не выдавайте это решение за генеративную модель: его задача — сделать причины ошибок видимыми. Классифицируйте каждый пример ровно в одну категорию:
 
@@ -695,28 +840,109 @@ vectorizer, document_matrix = build_retriever(documents)
                 ),
                 code(
                     """ANSWER_SUCCESS_F1 = 0.5
+MIN_ANSWER_COVERAGE = 0.60
 EVALUATION_TOP_K = 10
 THRESHOLD_GRID = np.linspace(0.0, 1.0, 21)
+LEXICAL_STOPWORDS = {
+    "a", "an", "the", "what", "when", "where", "which", "who", "whom", "whose",
+    "why", "how", "did", "does", "do", "is", "are", "was", "were", "be", "been",
+    "in", "on", "at", "to", "of", "for", "from", "with", "and", "or", "by", "as",
+    "this", "that", "it", "its", "their", "his", "her", "name", "called",
+}
+
+
+def lexical_tokens(text: str) -> list[str]:
+    return re.findall(r"[A-Za-z0-9][A-Za-z0-9'’.-]*", text)
 
 
 def extract_answer(question: str, context: str) -> tuple[str, float]:
-    '''Прозрачная опорная функция: выбирает предложение с наибольшим пересечением слов.
+    '''Прозрачный baseline: подходящее предложение, затем короткий типизированный фрагмент.
 
-    Это намеренно слабая функция ответа. Её не нужно улучшать: лабораторная проверяет
-    контур оценки и локализацию ошибки, а не качество QA-модели.
+    Правила намеренно ограничены английскими вопросами SQuAD. Это scaffold для измеримого
+    RAG-контура; студенту не нужно изобретать генератор ответа.
     '''
-    question_tokens = set(normalize_answer(question).split())
-    candidates = [item.strip() for item in re.split(r"(?<=[.!?])\\s+", context) if item.strip()]
-    if not candidates or not question_tokens:
+    question_tokens = set(normalize_answer(question).split()) - LEXICAL_STOPWORDS
+    sentences = [item.strip() for item in re.split(r"(?<=[.!?])\\s+", context) if item.strip()]
+    if not sentences or not question_tokens:
         return "", 0.0
 
-    def overlap_score(candidate: str) -> float:
+    def sentence_overlap(candidate: str) -> float:
         candidate_tokens = set(normalize_answer(candidate).split())
-        return len(question_tokens & candidate_tokens) / max(len(question_tokens), 1)
+        return len(question_tokens & candidate_tokens) / len(question_tokens)
 
-    best = max(candidates, key=overlap_score)
-    confidence = float(np.clip(overlap_score(best), 0.0, 1.0))
-    return best[:320], confidence
+    sentence = max(sentences, key=sentence_overlap)
+    overlap = sentence_overlap(sentence)
+    question_lower = question.lower()
+    if re.search(r"\\b(when|what year|how many|how much|how long)\\b", question_lower):
+        intent = "number"
+    elif re.search(r"\\b(who|whose|what person|what (?:is|was) the name)\\b", question_lower):
+        intent = "person"
+    elif re.search(r"\\b(where|what country|what city|what place)\\b", question_lower):
+        intent = "place"
+    else:
+        intent = "other"
+
+    candidates: list[tuple[str, str, float]] = []
+
+    def add_candidate(text: str, kind: str, prior: float) -> None:
+        cleaned = " ".join(text.strip(" \\t\\n,;:.!?()[]").split())
+        words = lexical_tokens(cleaned)
+        if not words:
+            return
+        cleaned = " ".join(words[:6])
+        if len(cleaned) <= 80:
+            candidates.append((cleaned, kind, prior))
+
+    number_pattern = r"(?<!\\w)(?:\\d{3,4}s?|\\d+(?:\\.\\d+)?(?:\\s*(?:%|percent|million|billion|years?|months?|days?|hours?))?)(?!\\w)"
+    for match in re.finditer(number_pattern, sentence, re.IGNORECASE):
+        add_candidate(match.group(), "number", 1.0)
+    for match in re.finditer(r'["“]([^"”]{1,80})["”]', sentence):
+        add_candidate(match.group(1), "quote", 0.6)
+    proper_pattern = r"\\b(?:[A-Z][\\w'’.-]*(?:\\s+(?:(?:of|the|de|von|and)\\s+)?[A-Z][\\w'’.-]*){0,4})\\b"
+    for match in re.finditer(proper_pattern, sentence):
+        add_candidate(match.group(), "proper", 0.8)
+    relation_pattern = r"\\b(?:is|are|was|were|became|becomes|mean(?:s|t)?|called|known as|named)\\s+([^,.;:!?]{1,80})"
+    for match in re.finditer(relation_pattern, sentence, re.IGNORECASE):
+        words = lexical_tokens(match.group(1))
+        for length in range(1, min(6, len(words)) + 1):
+            add_candidate(" ".join(words[:length]), "relation", 0.7)
+    if intent == "place":
+        for match in re.finditer(r"\\b(?:in|at|near|from|into|on)\\s+([^,.;:!?]{1,60})", sentence, re.IGNORECASE):
+            words = lexical_tokens(match.group(1))
+            for length in range(1, min(5, len(words)) + 1):
+                add_candidate(" ".join(words[:length]), "place", 1.0)
+
+    sentence_words = lexical_tokens(sentence)
+    for start, word in enumerate(sentence_words):
+        if re.fullmatch(r"\\d{2,4}s?", word) or (word[:1].isupper() and word.lower() not in LEXICAL_STOPWORDS):
+            for length in range(1, min(5, len(sentence_words) - start) + 1):
+                add_candidate(" ".join(sentence_words[start : start + length]), "window", 0.3)
+
+    if not candidates:
+        fallback = " ".join(sentence_words[:6])
+        return fallback, float(np.clip(0.55 * overlap + 0.15, 0.0, 1.0))
+
+    def candidate_score(item: tuple[str, str, float]) -> float:
+        text, kind, prior = item
+        words = normalize_answer(text).split()
+        novelty = sum(word not in question_tokens for word in words) / max(len(words), 1)
+        length_preference = 1 - min(abs(len(words) - 2) / 5, 1)
+        typed = (
+            (intent == "number" and kind == "number")
+            or (intent == "person" and kind == "proper")
+            or (intent == "place" and kind in {"place", "proper"})
+        )
+        echo = len(set(words) & question_tokens) / max(len(words), 1)
+        return 2.0 * typed + prior + 0.45 * novelty + 0.15 * length_preference - 0.30 * echo
+
+    answer, kind, _ = max(candidates, key=candidate_score)
+    typed_span = float(
+        (intent == "number" and kind == "number")
+        or (intent == "person" and kind == "proper")
+        or (intent == "place" and kind in {"place", "proper"})
+    )
+    confidence = float(np.clip(0.55 * overlap + 0.15 * typed_span + 0.15, 0.0, 1.0))
+    return answer, confidence
 
 
 def evaluate_questions(frame: pd.DataFrame, *, abstain_threshold: float, top_k: int = EVALUATION_TOP_K) -> pd.DataFrame:
@@ -726,10 +952,14 @@ def evaluate_questions(frame: pd.DataFrame, *, abstain_threshold: float, top_k: 
     raise NotImplementedError
 
 
-# TODO: заполните таблицу для всей THRESHOLD_GRID. decision_score — среднее
-# answer_success_rate и correct_abstention_rate; при равенстве выберите меньший threshold.
+# TODO: заполните таблицу для всей THRESHOLD_GRID. answer_coverage — доля answerable-вопросов
+# с непустым prediction; eligible означает answer_coverage >= MIN_ANSWER_COVERAGE.
+# decision_score — среднее answer_success_rate и correct_abstention_rate.
 threshold_results = pd.DataFrame(
-    columns=["threshold", "answer_success_rate", "correct_abstention_rate", "decision_score"]
+    columns=[
+        "threshold", "answer_coverage", "answer_success_rate",
+        "correct_abstention_rate", "decision_score", "eligible",
+    ]
 )
 ABSTAIN_THRESHOLD = None
 validation_report = None
@@ -756,27 +986,36 @@ assert [item["score"] for item in probe] == sorted([item["score"] for item in pr
 assert ABSTAIN_THRESHOLD is not None and 0 <= ABSTAIN_THRESHOLD <= 1
 assert len(threshold_results) == len(THRESHOLD_GRID)
 assert set(threshold_results.columns) == {
-    "threshold", "answer_success_rate", "correct_abstention_rate", "decision_score",
+    "threshold", "answer_coverage", "answer_success_rate",
+    "correct_abstention_rate", "decision_score", "eligible",
 }
 assert np.allclose(sorted(threshold_results["threshold"]), THRESHOLD_GRID)
-assert threshold_results[["answer_success_rate", "correct_abstention_rate", "decision_score"]].apply(
+assert threshold_results[
+    ["answer_coverage", "answer_success_rate", "correct_abstention_rate", "decision_score"]
+].apply(
     lambda column: column.between(0, 1).all()
 ).all()
+assert threshold_results["eligible"].equals(
+    threshold_results["answer_coverage"].ge(MIN_ANSWER_COVERAGE)
+)
+assert threshold_results["eligible"].any()
 assert np.allclose(
     threshold_results["decision_score"],
     (threshold_results["answer_success_rate"] + threshold_results["correct_abstention_rate"]) / 2,
 )
-expected_threshold = threshold_results.sort_values(
+expected_threshold = threshold_results[threshold_results["eligible"]].sort_values(
     ["decision_score", "threshold"], ascending=[False, True]
 ).iloc[0]["threshold"]
 assert np.isclose(ABSTAIN_THRESHOLD, expected_threshold)
 required = {
     "source_qa_id", "retrieved_ids", "gold_rank", "reciprocal_rank",
-    "retrieval_hit_at_1", "retrieval_hit_at_3", "prediction",
+    "retrieval_hit_at_1", "retrieval_hit_at_3", "prediction", "confidence",
     "answer_f1", "correct_abstention", "outcome",
 }
 assert validation_report is not None and required <= set(validation_report.columns)
 assert test_report is not None and required <= set(test_report.columns)
+assert validation_report["source_qa_id"].tolist() == validation_questions["source_qa_id"].tolist()
+assert test_report["source_qa_id"].tolist() == test_questions["source_qa_id"].tolist()
 allowed_outcomes = {
     "retrieval_miss", "bad_context", "unsupported_claim",
     "answering_failure", "correct_abstention", "success",
@@ -785,11 +1024,20 @@ assert set(test_report["outcome"]) <= allowed_outcomes
 assert test_report["reciprocal_rank"].between(0, 1).all()
 assert (test_report["retrieval_hit_at_1"] <= test_report["retrieval_hit_at_3"]).all()
 assert test_report["answer_f1"].between(0, 1).all()
+validation_answerable = validation_report[~validation_questions["is_impossible"]]
+assert validation_answerable["prediction"].ne("").mean() >= MIN_ANSWER_COVERAGE
+assert (validation_report["outcome"] == "success").any()
+assert (test_report["outcome"] == "success").any()
+assert (test_report["outcome"] == "correct_abstention").any()
+assert set(test_report["outcome"]) & {
+    "retrieval_miss", "bad_context", "unsupported_claim", "answering_failure",
+}
 assert summary is not None and {
     "retrieval_recall_at_1", "retrieval_recall_at_3", "retrieval_mrr",
-    "answer_f1", "abstention_accuracy", "outcome_counts",
+    "answer_f1", "answer_coverage", "abstention_accuracy", "outcome_counts",
 } <= set(summary)
 assert 0 <= summary["retrieval_mrr"] <= 1
+assert summary["answer_coverage"] > 0
 assert failure_examples is not None
 failure_buckets = {"retrieval_miss", "bad_context", "unsupported_claim", "answering_failure"}
 assert set(failure_examples["outcome"]) <= failure_buckets
@@ -924,15 +1172,17 @@ COMMAND_LOG_PATH = None
 RUN_METADATA = {
     "provenance": "recorded",
     "engine": ENGINE,
-    "engine_version": None,
-    "engine_commit": None,
-    "model_id": None,
-    "model_revision": None,
+    "engineVersion": None,
+    "engineCommit": None,
+    "modelId": None,
+    "modelRevision": None,
     "gpu": None,
     "driver": None,
     "cuda": None,
-    "environment_lock": None,
-    "started_at": None,
+    "environmentLock": None,
+    "startedAt": None,
+    "rawFixturePath": None,
+    "rawFixtureSha256": None,
 }
 """
                 ),
@@ -940,8 +1190,11 @@ RUN_METADATA = {
                     """# Self-check до передачи fixture на review.
 assert RAW_RESULT_PATH is not None and Path(RAW_RESULT_PATH).is_file()
 assert COMMAND_LOG_PATH is not None and Path(COMMAND_LOG_PATH).is_file()
-assert all(RUN_METADATA.values())
 raw_sha256 = hashlib.sha256(Path(RAW_RESULT_PATH).read_bytes()).hexdigest()
+RUN_METADATA["rawFixturePath"] = str(RAW_RESULT_PATH)
+RUN_METADATA["rawFixtureSha256"] = raw_sha256
+assert set(RUN_METADATA) == set(protocol["requiredRunMetadata"])
+assert all(RUN_METADATA.values())
 assert len(raw_sha256) == 64
 print({"engine": ENGINE, "raw_sha256": raw_sha256})
 """,
@@ -992,15 +1245,17 @@ COMMAND_LOG_PATH = None
 RUN_METADATA = {
     "provenance": "recorded",
     "engine": ENGINE,
-    "engine_version": None,
-    "engine_commit": None,
-    "model_id": None,
-    "model_revision": None,
+    "engineVersion": None,
+    "engineCommit": None,
+    "modelId": None,
+    "modelRevision": None,
     "gpu": None,
     "driver": None,
     "cuda": None,
-    "environment_lock": None,
-    "started_at": None,
+    "environmentLock": None,
+    "startedAt": None,
+    "rawFixturePath": None,
+    "rawFixtureSha256": None,
 }
 """
                 ),
@@ -1008,8 +1263,11 @@ RUN_METADATA = {
                     """# Self-check до передачи fixture на review.
 assert RAW_RESULT_PATH is not None and Path(RAW_RESULT_PATH).is_file()
 assert COMMAND_LOG_PATH is not None and Path(COMMAND_LOG_PATH).is_file()
-assert all(RUN_METADATA.values())
 raw_sha256 = hashlib.sha256(Path(RAW_RESULT_PATH).read_bytes()).hexdigest()
+RUN_METADATA["rawFixturePath"] = str(RAW_RESULT_PATH)
+RUN_METADATA["rawFixtureSha256"] = raw_sha256
+assert set(RUN_METADATA) == set(protocol["requiredRunMetadata"])
+assert all(RUN_METADATA.values())
 assert len(raw_sha256) == 64
 print({"engine": ENGINE, "raw_sha256": raw_sha256})
 """,

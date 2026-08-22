@@ -1,0 +1,5 @@
+# Preserve exact upstream bytes for checksum-pinned source fixtures.
+data/uci-bike-sharing/hour.csv -text -diff
+data/uci-bike-sharing/source-readme.txt -text -diff
+data/banking77/train.csv -text -diff
+data/banking77/test.csv -text -diff

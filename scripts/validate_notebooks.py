@@ -80,6 +80,34 @@ EXPECTED_RESPONSE_HOSTS = {
     "08-banking77-tfidf-error-analysis.ipynb": {"raw.githubusercontent.com"},
     "09-rag-failure-decomposition.ipynb": {"rajpurkar.github.io"},
 }
+TRUST_HELPER_NAMES = {"require_sha256", "require_final_hostname"}
+EXPECTED_CONTRACT_MARKERS = {
+    "07-bike-demand-production-capstone.ipynb": {
+        'TRAIN_END = int(len(df) * 0.70)',
+        'VALIDATION_END = int(len(df) * 0.85)',
+        'SEASONAL_MISSING_POLICY = "no_prediction"',
+        "VALIDATION_GO_NO_GO",
+        'assert int((~seasonal_test_audit["available"]).sum()) == 39',
+        "оптимистичное ограничение офлайн-оценки",
+    },
+    "09-rag-failure-decomposition.ipynb": {
+        "MIN_ANSWER_COVERAGE = 0.60",
+        'threshold_results[threshold_results["eligible"]]',
+        'assert (validation_report["outcome"] == "success").any()',
+        'assert (test_report["outcome"] == "correct_abstention").any()',
+        "учебный продуктовый контракт именно этой лабораторной",
+    },
+    "advanced/10a-vllm-benchmark.ipynb": {
+        '"engineVersion": None',
+        '"rawFixturePath": None',
+        'set(protocol["requiredRunMetadata"])',
+    },
+    "advanced/10b-sglang-benchmark.ipynb": {
+        '"engineVersion": None',
+        '"rawFixturePath": None',
+        'set(protocol["requiredRunMetadata"])',
+    },
+}
 URL_LITERAL = re.compile(r"https?://[^\"'\s)]+")
 EXPECTED_DATASET_LICENSES = {
     "uci-bike-sharing-hour": "CC-BY-4.0",
@@ -130,6 +158,96 @@ def repository_path(relative_path: str) -> Path:
     return path
 
 
+def validate_setup_trust_contract(
+    path: Path,
+    *,
+    setup_source: str,
+    namespace: dict[str, object],
+    execute_setup: bool,
+) -> list[str]:
+    """Validate that Colab downloads fail closed even under ``python -O``.
+
+    Static checks keep the notebook contract reviewable. Executable probes make
+    sure the named helpers really reject a corrupt payload and a redirected
+    response instead of relying on ``assert`` statements that optimization can
+    remove.
+    """
+
+    errors: list[str] = []
+    expected_hosts = EXPECTED_RESPONSE_HOSTS.get(path.name, set())
+    if not expected_hosts:
+        return errors
+
+    for helper_name in sorted(TRUST_HELPER_NAMES):
+        if not re.search(rf"^def {re.escape(helper_name)}\(", setup_source, re.MULTILINE):
+            errors.append(f"verified Colab bootstrap is missing {helper_name} helper")
+
+    if re.search(r"^\s*assert\b[^\n]*sha256", setup_source, re.MULTILINE):
+        errors.append("checksum trust guard must raise explicitly, not use assert")
+    if re.search(r"^\s*assert\b[^\n]*urlparse", setup_source, re.MULTILINE):
+        errors.append("redirect-host trust guard must raise explicitly, not use assert")
+    if len(re.findall(r"\brequire_sha256\(", setup_source)) < 2:
+        errors.append("verified Colab bootstrap does not call require_sha256")
+
+    for host in sorted(expected_hosts):
+        call_pattern = rf'require_final_hostname\(\s*response\s*,\s*["\']{re.escape(host)}["\']\s*\)'
+        if not re.search(call_pattern, setup_source):
+            errors.append(f"setup does not fail closed on redirect host {host}")
+
+    if not execute_setup:
+        return errors
+
+    require_sha256 = namespace.get("require_sha256")
+    require_final_hostname = namespace.get("require_final_hostname")
+    if not callable(require_sha256):
+        errors.append("executed setup did not define callable require_sha256")
+    if not callable(require_final_hostname):
+        errors.append("executed setup did not define callable require_final_hostname")
+    if not callable(require_sha256) or not callable(require_final_hostname):
+        return errors
+
+    trusted_payload = b"ml-mentor-validator-trusted-payload"
+    trusted_sha256 = sha256_bytes(trusted_payload)
+    try:
+        require_sha256(trusted_payload, trusted_sha256, "validator trusted fixture")
+    except Exception as exc:  # noqa: BLE001 - explain a broken notebook guard
+        errors.append(f"require_sha256 rejected a valid payload: {type(exc).__name__}: {exc}")
+
+    try:
+        require_sha256(trusted_payload, "0" * 64, "validator corrupt fixture")
+    except RuntimeError:
+        pass
+    except Exception as exc:  # noqa: BLE001 - RuntimeError is part of the public contract
+        errors.append(f"require_sha256 raised {type(exc).__name__}, expected RuntimeError")
+    else:
+        errors.append("require_sha256 accepted a corrupt payload")
+
+    expected_host = sorted(expected_hosts)[0]
+
+    class FixtureResponse:
+        def __init__(self, url: str) -> None:
+            self.url = url
+
+        def geturl(self) -> str:
+            return self.url
+
+    try:
+        require_final_hostname(FixtureResponse(f"https://{expected_host}/dataset"), expected_host)
+    except Exception as exc:  # noqa: BLE001 - explain a broken notebook guard
+        errors.append(f"require_final_hostname rejected the expected host: {type(exc).__name__}: {exc}")
+
+    try:
+        require_final_hostname(FixtureResponse("https://malicious.invalid/captured-dataset"), expected_host)
+    except RuntimeError:
+        pass
+    except Exception as exc:  # noqa: BLE001 - RuntimeError is part of the public contract
+        errors.append(f"require_final_hostname raised {type(exc).__name__}, expected RuntimeError")
+    else:
+        errors.append("require_final_hostname accepted a malicious redirect host")
+
+    return errors
+
+
 def validate_notebook(path: Path, *, execute_setup: bool, offline_cpu: bool) -> list[str]:
     errors: list[str] = []
     data = load_json(path)
@@ -140,9 +258,11 @@ def validate_notebook(path: Path, *, execute_setup: bool, offline_cpu: bool) -> 
     has_exercise_marker = False
     namespace: dict[str, object] = {"__name__": "__ml_mentor_lab_setup__"}
     setup_source = ""
+    notebook_source = ""
 
     for index, cell in enumerate(data.get("cells", [])):
         source = "".join(cell.get("source", []))
+        notebook_source += source
         lowered = source.lower()
         if any(marker in lowered for marker in FORBIDDEN_TEXT):
             errors.append(f"cell {index}: possible private or solution material")
@@ -187,6 +307,12 @@ def validate_notebook(path: Path, *, execute_setup: bool, offline_cpu: bool) -> 
         errors.append(f"missing roles: {', '.join(sorted(missing_roles))}")
     if not has_exercise_marker:
         errors.append("exercise does not contain an explicit starter marker")
+    missing_contract_markers = {
+        marker for marker in EXPECTED_CONTRACT_MARKERS.get(path.relative_to(ROOT).as_posix(), set())
+        if marker not in notebook_source
+    }
+    if missing_contract_markers:
+        errors.append(f"contract markers missing: {', '.join(sorted(missing_contract_markers))}")
     expected_markers = EXPECTED_BOOTSTRAP_MARKERS.get(path.name, set())
     missing_markers = {marker for marker in expected_markers if marker not in setup_source}
     if missing_markers:
@@ -202,10 +328,14 @@ def validate_notebook(path: Path, *, execute_setup: bool, offline_cpu: bool) -> 
             errors.append(f"setup contains non-whitelisted URLs: {', '.join(sorted(extra))}")
         if missing:
             errors.append(f"setup is missing whitelisted URLs: {', '.join(sorted(missing))}")
-    for host in EXPECTED_RESPONSE_HOSTS.get(path.name, set()):
-        marker = f'urlparse(response.geturl()).hostname == "{host}"'
-        if marker not in setup_source:
-            errors.append(f"setup does not fail closed on redirect host {host}")
+    errors.extend(
+        validate_setup_trust_contract(
+            path,
+            setup_source=setup_source,
+            namespace=namespace,
+            execute_setup=execute_setup,
+        )
+    )
     return errors
 
 
