@@ -14,9 +14,9 @@ paid theory, and material from private interviews are not published here.
 4. `04-tree-ensembles.ipynb` — compare a tree, Random Forest, and gradient boosting under one budget.
 5. `05-broken-pytorch-loop.ipynb` — repair and verify a PyTorch training loop.
 6. `06-correlated-importance.ipynb` — inspect permutation importance with correlated features.
-7. `07-bike-demand-production-capstone.ipynb` — build a time-aware Bike Sharing baseline and production contract (`review_ready`).
-8. `08-banking77-tfidf-error-analysis.ipynb` — compare word/character TF-IDF and audit errors across 77 intents (`review_ready`).
-9. `09-rag-failure-decomposition.ipynb` — measure retrieval and separate RAG failure buckets on a fixed SQuAD 2.0 subset (`review_ready`).
+7. `07-bike-demand-production-capstone.ipynb` — build a time-aware Bike Sharing baseline and production contract.
+8. `08-banking77-tfidf-error-analysis.ipynb` — compare word/character TF-IDF and audit errors across 77 intents.
+9. `09-rag-failure-decomposition.ipynb` — measure retrieval and separate RAG failure buckets on a fixed SQuAD 2.0 subset.
 
 `10-llm-serving-benchmark.ipynb` and the collectors in `advanced/` are drafts.
 They remain outside the public index until real, provenance-checked vLLM and

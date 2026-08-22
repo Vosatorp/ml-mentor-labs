@@ -73,8 +73,8 @@
       "license": "MIT",
       "notebookSha256": "41a7a9327fffda22914fb99e94bcf5971cce2d4867326464c5eef3615cc8e3e6",
       "path": "07-bike-demand-production-capstone.ipynb",
-      "releaseStatus": "review_ready",
-      "version": "0.9.0"
+      "releaseStatus": "public",
+      "version": "1.0.0"
     },
     {
       "containsExecutionOutputs": false,
@@ -85,8 +85,8 @@
       "license": "MIT",
       "notebookSha256": "96ae50f149ed0a89302d55890ce7b058c6c7895b8f8821c819ab3222137866c1",
       "path": "08-banking77-tfidf-error-analysis.ipynb",
-      "releaseStatus": "review_ready",
-      "version": "0.9.0"
+      "releaseStatus": "public",
+      "version": "1.0.0"
     },
     {
       "containsExecutionOutputs": false,
@@ -97,8 +97,8 @@
       "license": "MIT",
       "notebookSha256": "f43de002d49651bf15e8bbf46e946549a73ce8ba11687cca18ffe8a05de1e694",
       "path": "09-rag-failure-decomposition.ipynb",
-      "releaseStatus": "review_ready",
-      "version": "0.9.0"
+      "releaseStatus": "public",
+      "version": "1.0.0"
     },
     {
       "containsExecutionOutputs": false,
@@ -141,7 +141,10 @@
     "03-leakage-splits.ipynb",
     "04-tree-ensembles.ipynb",
     "05-broken-pytorch-loop.ipynb",
-    "06-correlated-importance.ipynb"
+    "06-correlated-importance.ipynb",
+    "07-bike-demand-production-capstone.ipynb",
+    "08-banking77-tfidf-error-analysis.ipynb",
+    "09-rag-failure-decomposition.ipynb"
   ],
   "schemaVersion": 1
 }
