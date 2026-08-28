@@ -6,6 +6,7 @@ import json
 import re
 from pathlib import Path
 from unittest.mock import patch
+from urllib.parse import urlparse
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -61,6 +62,11 @@ EXPECTED_BOOTSTRAP_MARKERS = {
         "80a5225e94905956a6446d296ca1093975c4d3b3260f1d6c8f68bc2ab77182d8",
         "053396eeff7f1c07d473f2bd62c4d0a28f5d34d37f49d5ffd7922a58fbb5494f",
     },
+    "11-cifar10-pytorch-training-pipeline.ipynb": {
+        "https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz",
+        "6d958be074577803d12ecdefd02955f39262c83c16fe9348329d7fe0b5c001ce",
+        "170_498_071",
+    },
 }
 ALLOWED_BOOTSTRAP_URLS = {
     "07-bike-demand-production-capstone.ipynb": {
@@ -74,11 +80,15 @@ ALLOWED_BOOTSTRAP_URLS = {
     "09-rag-failure-decomposition.ipynb": {
         "https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v2.0.json",
     },
+    "11-cifar10-pytorch-training-pipeline.ipynb": {
+        "https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz",
+    },
 }
 EXPECTED_RESPONSE_HOSTS = {
     "07-bike-demand-production-capstone.ipynb": {"archive.ics.uci.edu"},
     "08-banking77-tfidf-error-analysis.ipynb": {"raw.githubusercontent.com"},
     "09-rag-failure-decomposition.ipynb": {"rajpurkar.github.io"},
+    "11-cifar10-pytorch-training-pipeline.ipynb": {"cave.cs.toronto.edu"},
 }
 TRUST_HELPER_NAMES = {"require_sha256", "require_final_hostname"}
 EXPECTED_CONTRACT_MARKERS = {
@@ -97,6 +107,18 @@ EXPECTED_CONTRACT_MARKERS = {
         'assert (test_report["outcome"] == "correct_abstention").any()',
         "учебный продуктовый контракт именно этой лабораторной",
     },
+    "11-cifar10-pytorch-training-pipeline.ipynb": {
+        'REQUIRED_DEVICE = torch.device("cpu")',
+        "train_size=12_000",
+        "test_size=2_000",
+        "accumulation_steps=3",
+        "torch.inference_mode()",
+        "validation_accuracy >= 0.40",
+        "checkpoint_sha256",
+        "torch.amp.GradScaler",
+        "Адаптировано из YDS Practical_DL",
+        "Дополнительное русское объяснение — «мыш»",
+    },
     "advanced/10a-vllm-benchmark.ipynb": {
         '"engineVersion": None',
         '"rawFixturePath": None',
@@ -113,6 +135,7 @@ EXPECTED_DATASET_LICENSES = {
     "uci-bike-sharing-hour": "CC-BY-4.0",
     "banking77": "CC-BY-4.0",
     "squad2-rag-subset": "CC-BY-SA-4.0",
+    "cifar-10": "not-specified",
 }
 REQUIRED_DATASET_ARTIFACTS = {
     "uci-bike-sharing-hour": {
@@ -345,8 +368,8 @@ def validate_dataset_manifest() -> tuple[set[str], list[str]]:
         return set(), ["data/datasets.json is missing"]
 
     manifest = load_json(DATASET_MANIFEST_PATH)
-    if manifest.get("schemaVersion") != 1:
-        errors.append("data/datasets.json: schemaVersion must be 1")
+    if manifest.get("schemaVersion") != 2:
+        errors.append("data/datasets.json: schemaVersion must be 2")
     datasets = manifest.get("datasets")
     if not isinstance(datasets, list):
         return set(), [*errors, "data/datasets.json: datasets must be a list"]
@@ -368,9 +391,34 @@ def validate_dataset_manifest() -> tuple[set[str], list[str]]:
             if not dataset.get(key):
                 errors.append(f"{dataset_id}: missing {key}")
 
+        delivery = dataset.get("delivery")
+        if delivery not in {"packaged", "runtime_download"}:
+            errors.append(f"{dataset_id}: invalid delivery {delivery}")
+            continue
+
         artifacts = dataset.get("artifacts")
-        if not isinstance(artifacts, list) or not artifacts:
-            errors.append(f"{dataset_id}: artifacts must be a non-empty list")
+        if not isinstance(artifacts, list):
+            errors.append(f"{dataset_id}: artifacts must be a list")
+            continue
+        if delivery == "runtime_download":
+            if artifacts:
+                errors.append(f"{dataset_id}: runtime_download must not package artifacts")
+            if dataset.get("redistribution") != "not-packaged":
+                errors.append(f"{dataset_id}: runtime_download must declare redistribution=not-packaged")
+            if not re.fullmatch(r"[0-9a-f]{64}", str(dataset.get("sourceSha256", ""))):
+                errors.append(f"{dataset_id}: runtime_download requires sourceSha256")
+            if not isinstance(dataset.get("sourceBytes"), int) or dataset["sourceBytes"] <= 0:
+                errors.append(f"{dataset_id}: runtime_download requires sourceBytes")
+            source_host = urlparse(dataset["sourceUrl"]).hostname
+            if urlparse(dataset["sourceUrl"]).scheme != "https" or not source_host:
+                errors.append(f"{dataset_id}: runtime_download requires an HTTPS sourceUrl")
+            if not dataset.get("sourceFinalHost"):
+                errors.append(f"{dataset_id}: runtime_download requires sourceFinalHost")
+            if dataset_id == "cifar-10" and dataset.get("sourceFinalHost") != "cave.cs.toronto.edu":
+                errors.append("cifar-10: unexpected official redirect host")
+            continue
+        if not artifacts:
+            errors.append(f"{dataset_id}: packaged dataset requires artifacts")
             continue
         artifact_paths = {artifact.get("path") for artifact in artifacts}
         missing_artifacts = REQUIRED_DATASET_ARTIFACTS.get(dataset_id, set()) - artifact_paths
@@ -409,6 +457,14 @@ def validate_dataset_manifest() -> tuple[set[str], list[str]]:
     for path, marker in packaged_license_expectations.items():
         if not path.is_file() or marker.lower() not in path.read_text(encoding="utf-8").lower():
             errors.append(f"{path.relative_to(ROOT)}: missing license/attribution marker {marker}")
+
+    third_party_expectations = {
+        ROOT / "third_party" / "yandexdataschool-practical-dl-MIT.txt": "Permission is hereby granted",
+        ROOT / "THIRD_PARTY_NOTICES.md": "YDS Practical_DL",
+    }
+    for path, marker in third_party_expectations.items():
+        if not path.is_file() or marker.lower() not in path.read_text(encoding="utf-8").lower():
+            errors.append(f"{path.relative_to(ROOT)}: missing third-party notice marker {marker}")
 
     missing_expected = set(EXPECTED_DATASET_LICENSES) - dataset_ids
     if missing_expected:
