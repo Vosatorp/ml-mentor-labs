@@ -1,7 +1,7 @@
 {
   "datasetManifest": {
     "path": "data/datasets.json",
-    "sha256": "5431109e67b5766a26e0ce2a7aae28630326b58b28e9949a33057e000cb545a1"
+    "sha256": "35eaa6dcc4def0bf3018fe5ef83ddd7382bb20bd80ad12e94bbea39f35f008ef"
   },
   "labs": [
     {
@@ -133,6 +133,18 @@
       "path": "advanced/10b-sglang-benchmark.ipynb",
       "releaseStatus": "draft",
       "version": "0.1.0"
+    },
+    {
+      "containsExecutionOutputs": false,
+      "containsSolutions": false,
+      "datasets": [
+        "cifar-10"
+      ],
+      "license": "MIT",
+      "notebookSha256": "dbeb346cd58eb512578e8afd8b308e86fe6d0a7a6cea3aa64b002a23e76594bd",
+      "path": "11-cifar10-pytorch-training-pipeline.ipynb",
+      "releaseStatus": "public",
+      "version": "1.0.0"
     }
   ],
   "publicIndex": [
@@ -144,7 +156,8 @@
     "06-correlated-importance.ipynb",
     "07-bike-demand-production-capstone.ipynb",
     "08-banking77-tfidf-error-analysis.ipynb",
-    "09-rag-failure-decomposition.ipynb"
+    "09-rag-failure-decomposition.ipynb",
+    "11-cifar10-pytorch-training-pipeline.ipynb"
   ],
   "schemaVersion": 1
 }

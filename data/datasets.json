@@ -24,6 +24,7 @@
         }
       ],
       "attribution": "Fanaee-T, Hadi; Gama, Joao. Bike Sharing. UCI Machine Learning Repository. DOI: 10.24432/C5W894.",
+      "delivery": "packaged",
       "id": "uci-bike-sharing-hour",
       "license": "CC-BY-4.0",
       "licenseUrl": "https://creativecommons.org/licenses/by/4.0/legalcode",
@@ -55,6 +56,7 @@
         }
       ],
       "attribution": "Casanueva et al. Efficient Intent Detection with Dual Sentence Encoders. PolyAI-LDN/task-specific-datasets.",
+      "delivery": "packaged",
       "id": "banking77",
       "license": "CC-BY-4.0",
       "licenseUrl": "https://creativecommons.org/licenses/by/4.0/legalcode",
@@ -99,6 +101,7 @@
         }
       ],
       "attribution": "Rajpurkar, Jia et al. Stanford Question Answering Dataset 2.0.",
+      "delivery": "packaged",
       "id": "squad2-rag-subset",
       "license": "CC-BY-SA-4.0",
       "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/legalcode",
@@ -107,7 +110,22 @@
       "selection": "100 contexts in source order; one answerable QA each; one impossible QA for first 50 eligible contexts",
       "sourceSha256": "80a5225e94905956a6446d296ca1093975c4d3b3260f1d6c8f68bc2ab77182d8",
       "sourceUrl": "https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v2.0.json"
+    },
+    {
+      "artifacts": [],
+      "attribution": "Alex Krizhevsky. Learning Multiple Layers of Features from Tiny Images. Technical Report, 2009.",
+      "delivery": "runtime_download",
+      "id": "cifar-10",
+      "license": "not-specified",
+      "licenseUrl": "https://www.cs.toronto.edu/~kriz/cifar.html",
+      "name": "CIFAR-10 Python version",
+      "redistribution": "not-packaged",
+      "sourceBytes": 170498071,
+      "sourceFinalHost": "cave.cs.toronto.edu",
+      "sourceSha256": "6d958be074577803d12ecdefd02955f39262c83c16fe9348329d7fe0b5c001ce",
+      "sourceUrl": "https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz",
+      "technicalReportUrl": "https://www.cs.toronto.edu/~kriz/learning-features-2009-TR.pdf"
     }
   ],
-  "schemaVersion": 1
+  "schemaVersion": 2
 }

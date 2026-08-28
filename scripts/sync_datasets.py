@@ -233,9 +233,10 @@ def build_artifacts() -> tuple[dict[str, bytes], dict]:
         return {"path": path, "bytes": len(payload), "sha256": sha256(payload)}
 
     manifest = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "datasets": [
             {
+                "delivery": "packaged",
                 "id": "uci-bike-sharing-hour",
                 "name": "Bike Sharing Dataset (hourly aggregation)",
                 "license": "CC-BY-4.0",
@@ -251,6 +252,7 @@ def build_artifacts() -> tuple[dict[str, bytes], dict]:
                 ],
             },
             {
+                "delivery": "packaged",
                 "id": "banking77",
                 "name": "Banking77",
                 "license": "CC-BY-4.0",
@@ -270,6 +272,7 @@ def build_artifacts() -> tuple[dict[str, bytes], dict]:
                 ],
             },
             {
+                "delivery": "packaged",
                 "id": "squad2-rag-subset",
                 "name": "SQuAD 2.0 fixed RAG subset",
                 "license": "CC-BY-SA-4.0",
@@ -287,6 +290,21 @@ def build_artifacts() -> tuple[dict[str, bytes], dict]:
                     artifact("data/squad2/LICENSE"),
                     artifact("data/squad2/ATTRIBUTION.md"),
                 ],
+            },
+            {
+                "id": "cifar-10",
+                "name": "CIFAR-10 Python version",
+                "delivery": "runtime_download",
+                "license": "not-specified",
+                "licenseUrl": "https://www.cs.toronto.edu/~kriz/cifar.html",
+                "attribution": "Alex Krizhevsky. Learning Multiple Layers of Features from Tiny Images. Technical Report, 2009.",
+                "sourceUrl": "https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz",
+                "sourceFinalHost": "cave.cs.toronto.edu",
+                "sourceBytes": 170498071,
+                "sourceSha256": "6d958be074577803d12ecdefd02955f39262c83c16fe9348329d7fe0b5c001ce",
+                "technicalReportUrl": "https://www.cs.toronto.edu/~kriz/learning-features-2009-TR.pdf",
+                "redistribution": "not-packaged",
+                "artifacts": [],
             },
         ],
     }

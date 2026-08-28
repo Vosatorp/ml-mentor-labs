@@ -302,10 +302,12 @@ display(without_copy.sort_values("importance_mean", ascending=False))
 
 
 from new_labs import build_new_labs
+from pytorch_lab import build_pytorch_lab
 
 
 NEW_LABS = build_new_labs(md=md, code=code, notebook=notebook)
-ALL_LABS = {**LABS, **NEW_LABS}
+PYTORCH_LABS = build_pytorch_lab(md=md, code=code, notebook=notebook)
+ALL_LABS = {**LABS, **NEW_LABS, **PYTORCH_LABS}
 
 RELEASE_METADATA = {
     "01-metrics-threshold.ipynb": {"version": "1.0.0", "releaseStatus": "public", "datasets": []},
@@ -339,6 +341,11 @@ RELEASE_METADATA = {
         "version": "0.1.0",
         "releaseStatus": "draft",
         "datasets": ["squad2-rag-subset"],
+    },
+    "11-cifar10-pytorch-training-pipeline.ipynb": {
+        "version": "1.0.0",
+        "releaseStatus": "public",
+        "datasets": ["cifar-10"],
     },
 }
 

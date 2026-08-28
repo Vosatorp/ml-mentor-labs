@@ -17,6 +17,7 @@ paid theory, and material from private interviews are not published here.
 7. `07-bike-demand-production-capstone.ipynb` — build a time-aware Bike Sharing baseline and production contract.
 8. `08-banking77-tfidf-error-analysis.ipynb` — compare word/character TF-IDF and audit errors across 77 intents.
 9. `09-rag-failure-decomposition.ipynb` — measure retrieval and separate RAG failure buckets on a fixed SQuAD 2.0 subset.
+10. `11-cifar10-pytorch-training-pipeline.ipynb` — build and verify a reproducible PyTorch training pipeline on CIFAR-10.
 
 `10-llm-serving-benchmark.ipynb` and the collectors in `advanced/` are drafts.
 They remain outside the public index until real, provenance-checked vLLM and
@@ -34,6 +35,12 @@ that the committed offline path works without secrets. Redirects are accepted
 only when the final hostname matches the notebook allowlist; SHA-256 validation
 keeps the downloaded bytes fail-closed.
 
+Lab 11 intentionally does not package CIFAR-10 in Git. Its setup downloads the
+official Python archive from `www.cs.toronto.edu`, verifies its current final
+hostname `cave.cs.toronto.edu`, byte count and SHA-256, then relies on
+torchvision's per-batch integrity checks.
+The required 10k/2k path runs on CPU; full-data CUDA + AMP is optional.
+
 ## Dataset licenses
 
 The repository-level MIT license applies to starter text and code only. Dataset
@@ -45,6 +52,12 @@ fixtures keep their own terms and attribution:
 - Adapted SQuAD 2.0 subset: CC BY-SA 4.0; see `data/squad2/LICENSE` and
   `data/squad2/ATTRIBUTION.md` for the deterministic selection/modification
   notice.
+- CIFAR-10: the authors do not publish a standard license on the official
+  dataset page. The archive is not redistributed; `data/datasets.json` records
+  the source, checksum, attribution and technical report.
+
+The course-mechanics attribution for YDS Practical_DL and its MIT notice are
+recorded in `THIRD_PARTY_NOTICES.md` and `third_party/`.
 
 `labs-manifest.json` is the release source of truth. `publicIndex` contains only
 public notebooks; `review_ready` and `draft` files are never exposed by that
