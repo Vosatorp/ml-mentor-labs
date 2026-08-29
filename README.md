@@ -18,6 +18,8 @@ paid theory, and material from private interviews are not published here.
 8. `08-banking77-tfidf-error-analysis.ipynb` — compare word/character TF-IDF and audit errors across 77 intents.
 9. `09-rag-failure-decomposition.ipynb` — measure retrieval and separate RAG failure buckets on a fixed SQuAD 2.0 subset.
 10. `11-cifar10-pytorch-training-pipeline.ipynb` — build and verify a reproducible PyTorch training pipeline on CIFAR-10.
+11. `12-recsys-collaborative-baselines.ipynb` — compare popularity, item-to-item, and implicit ALS under time-aware evaluation.
+12. `13-recsys-multistage-ranking.ipynb` — build a candidate-generation and CatBoost ranking cascade with point-in-time features.
 
 `10-llm-serving-benchmark.ipynb` and the collectors in `advanced/` are drafts.
 They remain outside the public index until real, provenance-checked vLLM and
@@ -27,7 +29,7 @@ are not accepted.
 Each notebook has a fixed seed, an explicit deliverable, and local assertions.
 Run it in Colab or a Python 3.11+ environment. CPU is sufficient.
 
-Labs 07–09 first look for the checksum-verified fixture in a repository
+Labs 07–09 and 12–13 first look for the checksum-verified fixture in a repository
 checkout. When a notebook is opened by itself in Colab, its setup may download
 only the declared upstream source, verifies its SHA-256, and caches the verified
 artifact locally. The validation job blocks that network fallback and proves
@@ -40,6 +42,10 @@ official Python archive from `www.cs.toronto.edu`, verifies its current final
 hostname `cave.cs.toronto.edu`, byte count and SHA-256, then relies on
 torchvision's per-batch integrity checks.
 The required 10k/2k path runs on CPU; full-data CUDA + AMP is optional.
+
+Labs 12–13 use the same compact Yambda fixture. A standalone Colab downloads
+the fixture from the immutable data commit recorded inside the notebooks and
+checks the final host, byte count, and SHA-256 before reading it.
 
 ## Dataset licenses
 
@@ -55,6 +61,9 @@ fixtures keep their own terms and attribution:
 - CIFAR-10: the authors do not publish a standard license on the official
   dataset page. The archive is not redistributed; `data/datasets.json` records
   the source, checksum, attribution and technical report.
+- Yambda-50M likes subset: Apache 2.0; see `data/yambda/LICENSE` and
+  `data/yambda/ATTRIBUTION.md` for the deterministic selection and modification
+  notice.
 
 The course-mechanics attribution for YDS Practical_DL and its MIT notice are
 recorded in `THIRD_PARTY_NOTICES.md` and `third_party/`.

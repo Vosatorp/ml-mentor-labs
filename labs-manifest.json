@@ -1,7 +1,7 @@
 {
   "datasetManifest": {
     "path": "data/datasets.json",
-    "sha256": "35eaa6dcc4def0bf3018fe5ef83ddd7382bb20bd80ad12e94bbea39f35f008ef"
+    "sha256": "607b03d6fb2ff290ceb3975188c00b5c1295150e9f93a60768cfca2ef9610d74"
   },
   "labs": [
     {
@@ -145,6 +145,30 @@
       "path": "11-cifar10-pytorch-training-pipeline.ipynb",
       "releaseStatus": "public",
       "version": "1.0.0"
+    },
+    {
+      "containsExecutionOutputs": false,
+      "containsSolutions": false,
+      "datasets": [
+        "yambda-50m-likes-compact"
+      ],
+      "license": "MIT",
+      "notebookSha256": "36fbbe565491f4fcd3084edfaa3ee7f26875003c8a6c7875f87dc5d97cc7a5c6",
+      "path": "12-recsys-collaborative-baselines.ipynb",
+      "releaseStatus": "public",
+      "version": "1.0.0"
+    },
+    {
+      "containsExecutionOutputs": false,
+      "containsSolutions": false,
+      "datasets": [
+        "yambda-50m-likes-compact"
+      ],
+      "license": "MIT",
+      "notebookSha256": "b11fd861f7dfe3ec9752d9293da4f2eaa00f436214db170e51250abab731a457",
+      "path": "13-recsys-multistage-ranking.ipynb",
+      "releaseStatus": "public",
+      "version": "1.0.0"
     }
   ],
   "publicIndex": [
@@ -157,7 +181,9 @@
     "07-bike-demand-production-capstone.ipynb",
     "08-banking77-tfidf-error-analysis.ipynb",
     "09-rag-failure-decomposition.ipynb",
-    "11-cifar10-pytorch-training-pipeline.ipynb"
+    "11-cifar10-pytorch-training-pipeline.ipynb",
+    "12-recsys-collaborative-baselines.ipynb",
+    "13-recsys-multistage-ranking.ipynb"
   ],
   "schemaVersion": 1
 }

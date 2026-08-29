@@ -17,3 +17,14 @@ Links to the Russian articles are provided only as optional reading. No code,
 text or illustrations from the site are included. The publisher states the
 [CC BY-NC-ND 4.0 license](https://mouseml.github.io/blog/license/), which does
 not permit adaptation or commercial reuse.
+
+## Yandex Data School RecSys 2026
+
+The learning sequence in `12-recsys-collaborative-baselines.ipynb` and
+`13-recsys-multistage-ranking.ipynb` is informed by the public
+[RecSys course](https://github.com/yandexdataschool/recsys_course/tree/2026_spring),
+especially weeks 1–3 at revision
+`e919608f5ea726220bfa7ccf745a32f1d0e6be26`. The upstream repository does not
+state a reusable license. ML Mentor therefore includes no copied course text,
+code, notebook cells, or illustrations; all tasks, code, and checks are newly
+written, and the links are source attribution only.
