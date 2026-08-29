@@ -136,6 +136,7 @@ EXPECTED_DATASET_LICENSES = {
     "banking77": "CC-BY-4.0",
     "squad2-rag-subset": "CC-BY-SA-4.0",
     "cifar-10": "not-specified",
+    "yambda-50m-likes-compact": "Apache-2.0",
 }
 REQUIRED_DATASET_ARTIFACTS = {
     "uci-bike-sharing-hour": {
@@ -154,6 +155,11 @@ REQUIRED_DATASET_ARTIFACTS = {
         "data/squad2/squad2-rag-subset.json",
         "data/squad2/LICENSE",
         "data/squad2/ATTRIBUTION.md",
+    },
+    "yambda-50m-likes-compact": {
+        "data/yambda/yambda-50m-likes-compact.parquet",
+        "data/yambda/LICENSE",
+        "data/yambda/ATTRIBUTION.md",
     },
 }
 EXPECTED_OLD_NOTEBOOK_HASHES = {
@@ -448,11 +454,19 @@ def validate_dataset_manifest() -> tuple[set[str], list[str]]:
                 subset = load_json(subset_path)
                 if subset.get("license") != "CC-BY-SA-4.0" or not subset.get("modificationNotice"):
                     errors.append("squad2-rag-subset: fixture must preserve license and modification notice")
+        if dataset_id == "yambda-50m-likes-compact":
+            if not dataset.get("modificationNotice"):
+                errors.append("yambda-50m-likes-compact: modificationNotice is required")
+            expected_stats = {"events": 268631, "users": 1999, "items": 42965, "sourceEvents": 881456, "sourceUsers": 8283}
+            if dataset.get("statistics") != expected_stats:
+                errors.append("yambda-50m-likes-compact: unexpected statistics")
 
     packaged_license_expectations = {
         ROOT / "data" / "uci-bike-sharing" / "LICENSE": "CC BY 4.0",
         ROOT / "data" / "squad2" / "LICENSE": "CC BY-SA 4.0",
         ROOT / "data" / "squad2" / "ATTRIBUTION.md": "adaptation",
+        ROOT / "data" / "yambda" / "LICENSE": "Apache License",
+        ROOT / "data" / "yambda" / "ATTRIBUTION.md": "deterministic educational subset",
     }
     for path, marker in packaged_license_expectations.items():
         if not path.is_file() or marker.lower() not in path.read_text(encoding="utf-8").lower():

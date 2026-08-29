@@ -125,6 +125,43 @@
       "sourceSha256": "6d958be074577803d12ecdefd02955f39262c83c16fe9348329d7fe0b5c001ce",
       "sourceUrl": "https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz",
       "technicalReportUrl": "https://www.cs.toronto.edu/~kriz/learning-features-2009-TR.pdf"
+    },
+    {
+      "artifacts": [
+        {
+          "bytes": 2031420,
+          "path": "data/yambda/yambda-50m-likes-compact.parquet",
+          "sha256": "ca4dbdffea7114131ad9da411419838ed9c0a830613de935deaeecaad14d4805"
+        },
+        {
+          "bytes": 549,
+          "path": "data/yambda/LICENSE",
+          "sha256": "ca813f6eb8cffc9d35c80d37e2e15c33b786d65c4e73a1f4a002e95ae21e819d"
+        },
+        {
+          "bytes": 751,
+          "path": "data/yambda/ATTRIBUTION.md",
+          "sha256": "9e7126f84d64170d550e15f6bbf0e7432adec1292fec86ef3da5f59735bd91e4"
+        }
+      ],
+      "attribution": "Yandex LLC. Yambda-5B: A Large-Scale Multi-modal Dataset for Ranking and Retrieval.",
+      "delivery": "packaged",
+      "id": "yambda-50m-likes-compact",
+      "license": "Apache-2.0",
+      "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+      "modificationNotice": "Deterministic educational subset; selection and sorting details are stored in data/yambda/ATTRIBUTION.md.",
+      "name": "Yambda-50M deterministic likes subset",
+      "selection": "2,000 eligible users ordered by SHA-256; items with at least two interactions",
+      "sourceRevision": "dd6f3a19eef5866e346c3270e098baa641a44948",
+      "sourceSha256": "694087077dbacfcc1d22a5ca85cc6bd8ab182361933406e60500624c6a422bc4",
+      "sourceUrl": "https://huggingface.co/datasets/yandex/yambda/resolve/dd6f3a19eef5866e346c3270e098baa641a44948/flat/50m/likes.parquet",
+      "statistics": {
+        "events": 268631,
+        "items": 42965,
+        "sourceEvents": 881456,
+        "sourceUsers": 8283,
+        "users": 1999
+      }
     }
   ],
   "schemaVersion": 2

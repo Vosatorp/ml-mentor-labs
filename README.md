@@ -55,6 +55,9 @@ fixtures keep their own terms and attribution:
 - CIFAR-10: the authors do not publish a standard license on the official
   dataset page. The archive is not redistributed; `data/datasets.json` records
   the source, checksum, attribution and technical report.
+- Yambda-50M likes subset: Apache 2.0; see `data/yambda/LICENSE` and
+  `data/yambda/ATTRIBUTION.md` for the deterministic selection and modification
+  notice.
 
 The course-mechanics attribution for YDS Practical_DL and its MIT notice are
 recorded in `THIRD_PARTY_NOTICES.md` and `third_party/`.

@@ -9,6 +9,10 @@ import zipfile
 from pathlib import Path
 from urllib.parse import urlparse
 
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
+
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_ROOT = ROOT / "data"
@@ -65,6 +69,23 @@ Question, context and answer text are otherwise unchanged. This file is an
 adaptation, so the CC BY-SA 4.0 share-alike requirement continues to apply.
 """
 
+YAMBDA_ATTRIBUTION = b"""# Attribution and modification notice: Yambda-50M likes subset
+
+- Source dataset: Yambda-5B / Yambda-50M likes
+- Publisher: Yandex LLC
+- Dataset card: https://huggingface.co/datasets/yandex/yambda
+- Source revision: `dd6f3a19eef5866e346c3270e098baa641a44948`
+- Source file: `flat/50m/likes.parquet`, verified by SHA-256 in
+  `data/datasets.json`
+- License: Apache License 2.0
+
+ML Mentor created a deterministic educational subset. From users with at
+least 20 likes, it selects the first 2,000 users ordered by SHA-256 of
+`ml-mentor-recsys-v1:<uid>`. It then retains items with at least two likes in
+that group, keeps only `uid`, `item_id`, `timestamp`, and `is_organic`, and
+sorts rows by user, timestamp, and item. Values are not otherwise modified.
+"""
+
 
 SOURCES = {
     "uci_bike_zip": {
@@ -91,6 +112,14 @@ SOURCES = {
         "url": "https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v2.0.json",
         "sha256": "80a5225e94905956a6446d296ca1093975c4d3b3260f1d6c8f68bc2ab77182d8",
     },
+    "yambda_likes": {
+        "url": "https://huggingface.co/datasets/yandex/yambda/resolve/dd6f3a19eef5866e346c3270e098baa641a44948/flat/50m/likes.parquet",
+        "sha256": "694087077dbacfcc1d22a5ca85cc6bd8ab182361933406e60500624c6a422bc4",
+    },
+    "yambda_license": {
+        "url": "https://huggingface.co/datasets/yandex/yambda/raw/dd6f3a19eef5866e346c3270e098baa641a44948/LICENSE",
+        "sha256": "ca813f6eb8cffc9d35c80d37e2e15c33b786d65c4e73a1f4a002e95ae21e819d",
+    },
 }
 
 EXPECTED_SOURCE_HOSTS = {
@@ -100,6 +129,8 @@ EXPECTED_SOURCE_HOSTS = {
     "banking77_categories": "raw.githubusercontent.com",
     "banking77_license": "raw.githubusercontent.com",
     "squad2_dev": "rajpurkar.github.io",
+    "yambda_likes": ".hf.co",
+    "yambda_license": "huggingface.co",
 }
 
 
@@ -112,7 +143,12 @@ def fetch(name: str) -> bytes:
     request = urllib.request.Request(spec["url"], headers={"User-Agent": "ML-Mentor-Labs/1.0"})
     with urllib.request.urlopen(request, timeout=120) as response:
         final_host = urlparse(response.geturl()).hostname
-        if final_host != EXPECTED_SOURCE_HOSTS[name]:
+        expected_host = EXPECTED_SOURCE_HOSTS[name]
+        if expected_host.startswith("."):
+            host_matches = bool(final_host and final_host.endswith(expected_host))
+        else:
+            host_matches = final_host == expected_host
+        if not host_matches:
             raise RuntimeError(f"{name}: unexpected redirect host {final_host}")
         payload = response.read()
     actual = sha256(payload)
@@ -202,6 +238,57 @@ def build_squad_subset(source: bytes) -> bytes:
     )
 
 
+def build_yambda_subset(source: bytes) -> tuple[bytes, dict[str, int]]:
+    frame = pd.read_parquet(io.BytesIO(source), columns=["uid", "item_id", "timestamp", "is_organic"])
+    required_columns = {"uid", "item_id", "timestamp", "is_organic"}
+    if set(frame.columns) != required_columns:
+        raise RuntimeError(f"unexpected Yambda columns: {sorted(frame.columns)}")
+
+    user_counts = frame.groupby("uid", sort=False).size()
+    eligible_users = [int(uid) for uid in user_counts[user_counts >= 20].index]
+    selected_users = sorted(
+        eligible_users,
+        key=lambda uid: hashlib.sha256(f"ml-mentor-recsys-v1:{uid}".encode()).hexdigest(),
+    )[:2_000]
+    if len(selected_users) != 2_000:
+        raise RuntimeError(f"unexpected eligible Yambda users: {len(selected_users)}")
+
+    subset = frame[frame["uid"].isin(selected_users)].copy()
+    item_counts = subset.groupby("item_id", sort=False).size()
+    subset = subset[subset["item_id"].isin(item_counts[item_counts >= 2].index)].copy()
+    subset = subset.sort_values(["uid", "timestamp", "item_id"], kind="mergesort").reset_index(drop=True)
+    subset = subset.astype({"uid": "uint32", "item_id": "uint32", "timestamp": "uint32", "is_organic": "uint8"})
+
+    stats = {
+        "events": int(len(subset)),
+        "users": int(subset["uid"].nunique()),
+        "items": int(subset["item_id"].nunique()),
+        "sourceEvents": int(len(frame)),
+        "sourceUsers": int(frame["uid"].nunique()),
+    }
+    if stats != {
+        "events": 268_631,
+        "users": 1_999,
+        "items": 42_965,
+        "sourceEvents": 881_456,
+        "sourceUsers": 8_283,
+    }:
+        raise RuntimeError(f"unexpected Yambda subset stats: {stats}")
+
+    sink = io.BytesIO()
+    table = pa.Table.from_pandas(subset, preserve_index=False)
+    pq.write_table(
+        table,
+        sink,
+        compression="zstd",
+        compression_level=9,
+        use_dictionary=True,
+        write_statistics=True,
+        row_group_size=65_536,
+    )
+    return sink.getvalue(), stats
+
+
 def build_artifacts() -> tuple[dict[str, bytes], dict]:
     bike_zip = fetch("uci_bike_zip")
     banking_train = fetch("banking77_train")
@@ -209,10 +296,14 @@ def build_artifacts() -> tuple[dict[str, bytes], dict]:
     banking_categories = fetch("banking77_categories")
     banking_license = fetch("banking77_license")
     squad_source = fetch("squad2_dev")
+    yambda_source = fetch("yambda_likes")
+    yambda_license = fetch("yambda_license")
 
     with zipfile.ZipFile(io.BytesIO(bike_zip)) as archive:
         bike_hour = archive.read("hour.csv")
         bike_readme = archive.read("Readme.txt")
+
+    yambda_subset, yambda_stats = build_yambda_subset(yambda_source)
 
     artifacts = {
         "data/uci-bike-sharing/hour.csv": bike_hour,
@@ -226,6 +317,9 @@ def build_artifacts() -> tuple[dict[str, bytes], dict]:
         "data/squad2/squad2-rag-subset.json": build_squad_subset(squad_source),
         "data/squad2/LICENSE": SQUAD_LICENSE,
         "data/squad2/ATTRIBUTION.md": SQUAD_ATTRIBUTION,
+        "data/yambda/yambda-50m-likes-compact.parquet": yambda_subset,
+        "data/yambda/LICENSE": yambda_license,
+        "data/yambda/ATTRIBUTION.md": YAMBDA_ATTRIBUTION,
     }
 
     def artifact(path: str) -> dict:
@@ -305,6 +399,28 @@ def build_artifacts() -> tuple[dict[str, bytes], dict]:
                 "technicalReportUrl": "https://www.cs.toronto.edu/~kriz/learning-features-2009-TR.pdf",
                 "redistribution": "not-packaged",
                 "artifacts": [],
+            },
+            {
+                "delivery": "packaged",
+                "id": "yambda-50m-likes-compact",
+                "name": "Yambda-50M deterministic likes subset",
+                "license": "Apache-2.0",
+                "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+                "attribution": "Yandex LLC. Yambda-5B: A Large-Scale Multi-modal Dataset for Ranking and Retrieval.",
+                "sourceRevision": "dd6f3a19eef5866e346c3270e098baa641a44948",
+                "sourceUrl": SOURCES["yambda_likes"]["url"],
+                "sourceSha256": SOURCES["yambda_likes"]["sha256"],
+                "selection": "2,000 eligible users ordered by SHA-256; items with at least two interactions",
+                "modificationNotice": (
+                    "Deterministic educational subset; selection and sorting details are stored "
+                    "in data/yambda/ATTRIBUTION.md."
+                ),
+                "statistics": yambda_stats,
+                "artifacts": [
+                    artifact("data/yambda/yambda-50m-likes-compact.parquet"),
+                    artifact("data/yambda/LICENSE"),
+                    artifact("data/yambda/ATTRIBUTION.md"),
+                ],
             },
         ],
     }
