@@ -19,6 +19,8 @@ CPU_STARTER_LABS = {
     "07-bike-demand-production-capstone.ipynb",
     "08-banking77-tfidf-error-analysis.ipynb",
     "09-rag-failure-decomposition.ipynb",
+    "12-recsys-collaborative-baselines.ipynb",
+    "13-recsys-multistage-ranking.ipynb",
 }
 FORBIDDEN_TEXT = (
     "private interview",
@@ -67,6 +69,16 @@ EXPECTED_BOOTSTRAP_MARKERS = {
         "6d958be074577803d12ecdefd02955f39262c83c16fe9348329d7fe0b5c001ce",
         "170_498_071",
     },
+    "12-recsys-collaborative-baselines.ipynb": {
+        "a8542e1f42cecc21a1a7278955b6fd323ced8c9b",
+        "ca4dbdffea7114131ad9da411419838ed9c0a830613de935deaeecaad14d4805",
+        "2031420",
+    },
+    "13-recsys-multistage-ranking.ipynb": {
+        "a8542e1f42cecc21a1a7278955b6fd323ced8c9b",
+        "ca4dbdffea7114131ad9da411419838ed9c0a830613de935deaeecaad14d4805",
+        "2031420",
+    },
 }
 ALLOWED_BOOTSTRAP_URLS = {
     "07-bike-demand-production-capstone.ipynb": {
@@ -83,12 +95,20 @@ ALLOWED_BOOTSTRAP_URLS = {
     "11-cifar10-pytorch-training-pipeline.ipynb": {
         "https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz",
     },
+    "12-recsys-collaborative-baselines.ipynb": {
+        "https://raw.githubusercontent.com/Vosatorp/ml-mentor-labs/a8542e1f42cecc21a1a7278955b6fd323ced8c9b/data/yambda/yambda-50m-likes-compact.parquet",
+    },
+    "13-recsys-multistage-ranking.ipynb": {
+        "https://raw.githubusercontent.com/Vosatorp/ml-mentor-labs/a8542e1f42cecc21a1a7278955b6fd323ced8c9b/data/yambda/yambda-50m-likes-compact.parquet",
+    },
 }
 EXPECTED_RESPONSE_HOSTS = {
     "07-bike-demand-production-capstone.ipynb": {"archive.ics.uci.edu"},
     "08-banking77-tfidf-error-analysis.ipynb": {"raw.githubusercontent.com"},
     "09-rag-failure-decomposition.ipynb": {"rajpurkar.github.io"},
     "11-cifar10-pytorch-training-pipeline.ipynb": {"cave.cs.toronto.edu"},
+    "12-recsys-collaborative-baselines.ipynb": {"raw.githubusercontent.com"},
+    "13-recsys-multistage-ranking.ipynb": {"raw.githubusercontent.com"},
 }
 TRUST_HELPER_NAMES = {"require_sha256", "require_final_hostname"}
 EXPECTED_CONTRACT_MARKERS = {
@@ -118,6 +138,20 @@ EXPECTED_CONTRACT_MARKERS = {
         "torch.amp.GradScaler",
         "Адаптировано из YDS Practical_DL",
         "Дополнительное русское объяснение — «мыш»",
+    },
+    "12-recsys-collaborative-baselines.ipynb": {
+        "TRAIN_BOUNDARY",
+        "filter_already_liked_items=True",
+        "Recall@20",
+        "rare_target",
+        '"fallback": "popularity"',
+    },
+    "13-recsys-multistage-ranking.ipynb": {
+        "point_in_time_features",
+        "candidate Recall@100",
+        'loss_function="YetiRankPairwise"',
+        "reciprocal_rank_fusion",
+        "implicit_feedback_limit",
     },
     "advanced/10a-vllm-benchmark.ipynb": {
         '"engineVersion": None',

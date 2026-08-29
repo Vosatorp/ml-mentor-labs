@@ -303,11 +303,13 @@ display(without_copy.sort_values("importance_mean", ascending=False))
 
 from new_labs import build_new_labs
 from pytorch_lab import build_pytorch_lab
+from recsys_labs import build_recsys_labs
 
 
 NEW_LABS = build_new_labs(md=md, code=code, notebook=notebook)
 PYTORCH_LABS = build_pytorch_lab(md=md, code=code, notebook=notebook)
-ALL_LABS = {**LABS, **NEW_LABS, **PYTORCH_LABS}
+RECSYS_LABS = build_recsys_labs(md=md, code=code, notebook=notebook)
+ALL_LABS = {**LABS, **NEW_LABS, **PYTORCH_LABS, **RECSYS_LABS}
 
 RELEASE_METADATA = {
     "01-metrics-threshold.ipynb": {"version": "1.0.0", "releaseStatus": "public", "datasets": []},
@@ -346,6 +348,16 @@ RELEASE_METADATA = {
         "version": "1.0.0",
         "releaseStatus": "public",
         "datasets": ["cifar-10"],
+    },
+    "12-recsys-collaborative-baselines.ipynb": {
+        "version": "1.0.0",
+        "releaseStatus": "public",
+        "datasets": ["yambda-50m-likes-compact"],
+    },
+    "13-recsys-multistage-ranking.ipynb": {
+        "version": "1.0.0",
+        "releaseStatus": "public",
+        "datasets": ["yambda-50m-likes-compact"],
     },
 }
 
